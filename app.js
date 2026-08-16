@@ -6,7 +6,7 @@ const PARENT_DOMAINS = ["localhost", "127.0.0.1", window.location.hostname].filt
 const UNIQUE_PARENTS = [...new Set(PARENT_DOMAINS)];
 
 // Change this passcode before deploying. Anyone with it can become host.
-const HOST_PASSCODE = "brasla2026";
+const HOST_PASSCODE = "braslablbec2026";
 
 // Fill this in with your Firebase project's web config (see setup steps).
 // Get it from: Firebase Console -> Project settings -> General -> Your apps -> SDK setup and config
