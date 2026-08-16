@@ -413,34 +413,59 @@ function makeDraggable(panel){
 panels.forEach(makeDraggable);
 
 function makeResizable(panel){
-  const handle = panel.querySelector('[data-resize-handle]');
-  if(!handle) return;
-  let resizing = false, startX, startWidth;
+  const handles = panel.querySelectorAll('[data-resize-handle]');
+  handles.forEach(handle => {
+    const dir = handle.dataset.resizeHandle; // 'nw' | 'ne' | 'sw' | 'se'
+    let resizing = false, startX, startY, startWidth, startLeft, startTop;
 
-  handle.addEventListener('pointerdown', function(e){
-    if(isSmallScreen()) return;
-    resizing = true;
-    handle.setPointerCapture(e.pointerId);
-    startX = e.clientX;
-    startWidth = panel.offsetWidth;
-    panel.classList.add('resizing');
-    e.stopPropagation();
-  });
-  handle.addEventListener('pointermove', function(e){
-    if(!resizing) return;
-    const dx = e.clientX - startX;
-    let newWidth = startWidth + dx;
-    newWidth = Math.max(340, Math.min(newWidth, workspace.clientWidth - panel.offsetLeft - 10));
-    panel.style.width = newWidth + 'px';
-  });
-  handle.addEventListener('pointerup', function(e){
-    if(!resizing) return;
-    resizing = false;
-    panel.classList.remove('resizing');
-    const layout = loadPanelLayout();
-    const id = panel.dataset.panel;
-    layout[id] = { ...(layout[id] || {}), x: panel.offsetLeft, y: panel.offsetTop, width: panel.offsetWidth };
-    savePanelLayout(layout);
+    handle.addEventListener('pointerdown', function(e){
+      if(isSmallScreen()) return;
+      resizing = true;
+      handle.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY;
+      startWidth = panel.offsetWidth;
+      startLeft = panel.offsetLeft;
+      startTop = panel.offsetTop;
+      panel.classList.add('resizing');
+      e.stopPropagation();
+    });
+
+    handle.addEventListener('pointermove', function(e){
+      if(!resizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const isWest = dir === 'nw' || dir === 'sw';
+      const isNorth = dir === 'nw' || dir === 'ne';
+
+      let newWidth = isWest ? startWidth - dx : startWidth + dx;
+      newWidth = Math.max(340, newWidth);
+
+      let newLeft = startLeft;
+      if(isWest){
+        newLeft = startLeft + (startWidth - newWidth);
+        newLeft = Math.max(0, newLeft);
+      }
+      newWidth = Math.min(newWidth, workspace.clientWidth - newLeft - 10);
+
+      let newTop = startTop;
+      if(isNorth){
+        newTop = Math.max(0, startTop + dy);
+      }
+
+      panel.style.width = newWidth + 'px';
+      panel.style.left = newLeft + 'px';
+      if(isNorth) panel.style.top = newTop + 'px';
+    });
+
+    handle.addEventListener('pointerup', function(){
+      if(!resizing) return;
+      resizing = false;
+      panel.classList.remove('resizing');
+      const layout = loadPanelLayout();
+      const id = panel.dataset.panel;
+      layout[id] = { ...(layout[id] || {}), x: panel.offsetLeft, y: panel.offsetTop, width: panel.offsetWidth };
+      savePanelLayout(layout);
+    });
   });
 }
 panels.forEach(makeResizable);
