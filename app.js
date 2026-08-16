@@ -114,6 +114,29 @@ let ytPlayer = null;
 let ytReady = false;
 let currentSourceType = null; // 'mp4' | 'youtube' | null
 let suppressLocalEvents = false; // true while we're programmatically applying remote state
+let playbackUnlocked = isHost; // viewers need a click first; host always allowed (they trigger play directly)
+const joinBtn = document.getElementById('join-playback-btn');
+
+function showJoinButtonIfNeeded(){
+  if(isHost || playbackUnlocked) { joinBtn.style.display = 'none'; return; }
+  joinBtn.style.display = 'block';
+}
+
+joinBtn.addEventListener('click', function(){
+  playbackUnlocked = true;
+  joinBtn.style.display = 'none';
+  // A real click on this button counts as a user gesture, which "unlocks" this
+  // page to allow script-triggered play() for the rest of the session.
+  if(currentSourceType === 'mp4'){
+    filmVideo.play().then(() => {
+      // Immediately re-apply the latest known state now that we're unlocked.
+      if(firebaseReady) stateRef.once('value').then(snap => applyRemoteState(snap.val()));
+    }).catch(() => {});
+  } else if(currentSourceType === 'youtube' && ytPlayer){
+    ytPlayer.playVideo();
+    if(firebaseReady) stateRef.once('value').then(snap => applyRemoteState(snap.val()));
+  }
+});
 
 function extractYouTubeId(url){
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
@@ -277,11 +300,18 @@ function applyRemoteState(state){
     const elapsed = state.updatedAt ? (Date.now() - state.updatedAt) / 1000 : 0;
     const targetPos = state.position + (state.isPlaying ? Math.max(elapsed, 0) : 0);
 
+    if(state.isPlaying && !playbackUnlocked){
+      showJoinButtonIfNeeded();
+      setTimeout(() => { suppressLocalEvents = false; }, 300);
+      return;
+    }
+    joinBtn.style.display = 'none';
+
     if(wantType === 'mp4'){
       if(Math.abs(filmVideo.currentTime - targetPos) > 1.5){
         filmVideo.currentTime = targetPos;
       }
-      if(state.isPlaying) filmVideo.play().catch(()=>{});
+      if(state.isPlaying) filmVideo.play().catch(() => showJoinButtonIfNeeded());
       else filmVideo.pause();
     } else if(wantType === 'youtube' && ytPlayer){
       ytPlayer.getCurrentTime && Promise.resolve(ytPlayer.getCurrentTime()).then(cur => {
