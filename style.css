@@ -106,16 +106,16 @@ body{
 
 .resize-handle{
   position:absolute;
-  right:-4px;
-  bottom:-4px;
   width:18px;
   height:18px;
-  cursor:nwse-resize;
   touch-action:none;
   background:
     linear-gradient(135deg, transparent 0 40%, var(--line) 40% 46%, transparent 46% 60%, var(--line) 60% 66%, transparent 66% 80%, var(--line) 80% 86%, transparent 86%);
-  border-radius:0 0 4px 0;
 }
+.rh-se{ right:-4px; bottom:-4px; cursor:nwse-resize; border-radius:0 0 4px 0; }
+.rh-nw{ left:-4px; top:-4px; cursor:nwse-resize; border-radius:4px 0 0 0; transform:rotate(180deg); }
+.rh-ne{ right:-4px; top:-4px; cursor:nesw-resize; border-radius:0 4px 0 0; transform:rotate(90deg); }
+.rh-sw{ left:-4px; bottom:-4px; cursor:nesw-resize; border-radius:0 0 0 4px; transform:rotate(270deg); }
 @media (max-width: 899px){ .resize-handle{ display:none; } }
 
 .panel-header{
