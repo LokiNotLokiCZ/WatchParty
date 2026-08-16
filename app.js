@@ -6,7 +6,7 @@ const PARENT_DOMAINS = ["localhost", "127.0.0.1", window.location.hostname].filt
 const UNIQUE_PARENTS = [...new Set(PARENT_DOMAINS)];
 
 // Change this passcode before deploying. Anyone with it can become host.
-const HOST_PASSCODE = "braslablbec2026";
+const HOST_PASSCODE = "brasla2026";
 
 // Fill this in with your Firebase project's web config (see setup steps).
 // Get it from: Firebase Console -> Project settings -> General -> Your apps -> SDK setup and config
@@ -61,12 +61,6 @@ new Twitch.Embed("twitch-embed", {
 const chatParents = UNIQUE_PARENTS.map(p => `parent=${encodeURIComponent(p)}`).join('&');
 document.getElementById('twitch-chat').src =
   `https://www.twitch.tv/embed/${CHANNEL}/chat?darkpopout&${chatParents}`;
-
-document.getElementById('chat-toggle-btn').addEventListener('click', function(){
-  const chat = document.getElementById('twitch-chat');
-  const collapsed = chat.classList.toggle('collapsed');
-  this.textContent = collapsed ? 'show' : 'hide';
-});
 
 /* ============================================================
    HOST MODE
@@ -377,7 +371,8 @@ function initPanelPosition(panel, defaultX, defaultY){
 }
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
-initPanelPosition(document.getElementById('panel-film'), 620, 20);
+initPanelPosition(document.getElementById('panel-film'), 600, 20);
+initPanelPosition(document.getElementById('panel-chat'), 1180, 20);
 
 function makeDraggable(panel){
   const handle = panel.querySelector('[data-drag-handle]');
@@ -475,7 +470,8 @@ function closePanel(id){
   panel.style.display = 'none';
   const chip = document.createElement('button');
   chip.className = 'tray-chip';
-  chip.textContent = (id === 'twitch' ? 'Stream' : 'Film') + ' — reopen';
+  const labels = { twitch: 'Stream', film: 'Film', chat: 'Chat' };
+  chip.textContent = (labels[id] || id) + ' — reopen';
   chip.dataset.reopen = id;
   chip.addEventListener('click', () => {
     panel.style.display = 'flex';
