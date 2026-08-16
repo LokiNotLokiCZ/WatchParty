@@ -202,6 +202,22 @@ body{
 .film-empty{ font-family:var(--font-mono); font-weight:600; font-size:12px; color:var(--text-faint); text-align:center; padding:20px; line-height:1.7; }
 .film-empty b{color:var(--text-dim);}
 
+.join-playback-btn{
+  position:absolute;
+  z-index:6;
+  font-family:var(--font-mono);
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:0.5px;
+  padding:12px 20px;
+  border-radius:6px;
+  border:1px solid var(--teal);
+  background:rgba(45,212,191,0.15);
+  color:var(--teal);
+  cursor:pointer;
+}
+.join-playback-btn:hover{ background:rgba(45,212,191,0.28); }
+
 .film-title-display{
   font-family:var(--font-display); font-stretch:condensed; font-weight:900; font-size:16px;
   letter-spacing:0.5px; text-transform:uppercase; color:var(--text-dim); padding:0 2px; min-height:18px;
