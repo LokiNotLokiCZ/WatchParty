@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brasla_ · Watch Party</title>
-
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,212 +15,93 @@
   </div>
   <div class="status-cluster">
     <div class="live-pill"><span class="live-dot"></span>ON TWITCH.TV</div>
+    <button class="host-btn" id="host-btn" title="Unlock host controls">HOST</button>
     <div class="clock" id="clock">--:--:--</div>
   </div>
 </div>
 
-<div class="console">
+<div id="workspace">
 
-  <!-- LEFT BAY: TWITCH -->
-  <div class="bay" id="bay-twitch">
-    <div class="bay-header">
+  <!-- TWITCH PANEL -->
+  <div class="panel" id="panel-twitch" data-panel="twitch">
+    <div class="panel-header" data-drag-handle>
+      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
       <span class="bay-label orange">Stream</span>
       <span class="bay-tag">CH 1 · TWITCH</span>
+      <button class="panel-close" data-close="twitch" title="Close panel">✕</button>
     </div>
 
-    <div class="frame on-air" id="frame-twitch">
-      <span class="corner-tag pgm-orange" id="tag-twitch">PGM</span>
-      <div id="twitch-embed"></div>
-    </div>
-
-    <div class="chat-wrap">
-      <div class="chat-head">
-        <span class="chat-head-label">Live chat</span>
-        <button class="chat-toggle" id="chat-toggle-btn">hide</button>
+    <div class="panel-body">
+      <div class="frame on-air" id="frame-twitch">
+        <span class="corner-tag pgm-orange" id="tag-twitch">PGM</span>
+        <div id="twitch-embed"></div>
       </div>
-      <iframe id="twitch-chat" src=""></iframe>
-    </div>
 
-    <div class="points-note">
-      <span>&#9432;</span>
-      <span><b>Channel points</b> live only on Twitch's own site — there's no public embed for them. To redeem, viewers open <a href="https://twitch.tv/brasla_" target="_blank" rel="noopener">twitch.tv/brasla_</a> directly.</span>
+      <div class="chat-wrap">
+        <div class="chat-head">
+          <span class="chat-head-label">Live chat</span>
+          <button class="chat-toggle" id="chat-toggle-btn">hide</button>
+        </div>
+        <iframe id="twitch-chat" src=""></iframe>
+      </div>
+
+      <div class="points-note">
+        <span>&#9432;</span>
+        <span><b>Channel points</b> live only on Twitch's own site. To redeem, viewers open <a href="https://twitch.tv/brasla_" target="_blank" rel="noopener">twitch.tv/brasla_</a> directly.</span>
+      </div>
     </div>
   </div>
 
-  <!-- SWITCHER -->
-  <div class="switcher">
-    <div class="switcher-line"></div>
-    <button class="switch-btn active-orange" id="switch-to-stream" title="Focus stream">S</button>
-    <button class="switch-btn" id="switch-to-film" title="Focus film">F</button>
-    <div class="switcher-line"></div>
-  </div>
-
-  <!-- RIGHT BAY: FILM -->
-  <div class="bay" id="bay-film">
-    <div class="bay-header">
+  <!-- FILM PANEL -->
+  <div class="panel" id="panel-film" data-panel="film">
+    <div class="panel-header" data-drag-handle>
+      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
       <span class="bay-label teal">Film</span>
-      <span class="bay-tag">CH 2 · LOCAL / URL</span>
+      <span class="bay-tag">CH 2 · SYNCED</span>
+      <span class="sync-pill" id="sync-pill">viewer</span>
+      <button class="panel-close" data-close="film" title="Close panel">✕</button>
     </div>
 
-    <div class="frame" id="frame-film">
-      <span class="corner-tag pgm-teal" id="tag-film" style="display:none;">PGM</span>
-      <div id="film-stage">
-        <div class="film-empty" id="film-empty-msg">No source loaded<br><b>Load a file or paste a direct video / YouTube link below.</b></div>
-        <video id="film-video" controls></video>
-        <iframe id="film-yt" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    <div class="panel-body">
+      <div class="frame" id="frame-film">
+        <span class="corner-tag pgm-teal" id="tag-film" style="display:none;">PGM</span>
+        <div id="film-stage">
+          <div class="film-empty" id="film-empty-msg">No source loaded<br><b>Host can load a direct video URL or YouTube link below.</b></div>
+          <video id="film-video" controls></video>
+          <div id="film-yt"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="film-title-display" id="film-title-display"></div>
+      <div class="film-title-display" id="film-title-display"></div>
 
-    <div class="film-controls">
-      <div class="film-row">
-        <input type="text" class="film-url-input" id="film-url" placeholder="Paste a video URL (.mp4 or YouTube link)">
-        <button class="btn" id="film-load-url">Load</button>
+      <div class="film-controls" id="film-controls" style="display:none;">
+        <div class="film-row">
+          <input type="text" class="film-url-input" id="film-url" placeholder="Paste a video URL (.mp4 or YouTube link)">
+          <button class="btn" id="film-load-url">Load</button>
+        </div>
+        <div class="film-row" style="align-items:center; justify-content:space-between;">
+          <label class="film-file-label">
+            <input type="file" id="film-file" accept="video/*">
+          </label>
+          <button class="btn ghost" id="film-clear">Clear</button>
+        </div>
+        <div class="film-note">Local file uploads only play for you — they can't be shared with other viewers. Use a direct video URL or YouTube link to sync.</div>
       </div>
-      <div class="film-row" style="align-items:center; justify-content:space-between;">
-        <label class="film-file-label">
-          <input type="file" id="film-file" accept="video/*">
-        </label>
-        <button class="btn ghost" id="film-clear">Clear</button>
-      </div>
+      <div class="film-note viewer-note" id="viewer-note">Playback is controlled by the host. Unlock host mode with the HOST button above if you're Loki or Brasla_.</div>
     </div>
   </div>
 
 </div>
 
-<footer>watch-party console · edit CHANNEL / PARENT_DOMAINS at the top of the script before deploying</footer>
+<div id="panel-tray"></div>
+
+<footer>watch-party console · sync powered by Firebase Realtime Database</footer>
 
 <script src="https://embed.twitch.tv/embed/v1.js"></script>
-<script>
-  /* ====== CONFIG ====== */
-  const CHANNEL = "brasla_";
-  // Twitch embeds require every hosting domain listed here (no protocol, no path).
-  // Add your real deployed domain(s). localhost is included for local testing.
-  const PARENT_DOMAINS = ["localhost", "127.0.0.1", window.location.hostname].filter(Boolean);
-  const UNIQUE_PARENTS = [...new Set(PARENT_DOMAINS)];
-
-  /* ====== CLOCK ====== */
-  function tickClock(){
-    const d = new Date();
-    document.getElementById('clock').textContent = d.toLocaleTimeString('cs-CZ', {hour12:false});
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-
-  /* ====== TWITCH PLAYER EMBED ====== */
-  new Twitch.Embed("twitch-embed", {
-    channel: CHANNEL,
-    parent: UNIQUE_PARENTS,
-    width: "100%",
-    height: "100%",
-    layout: "video",
-    autoplay: false
-  });
-
-  /* ====== TWITCH CHAT EMBED ====== */
-  const chatParents = UNIQUE_PARENTS.map(p => `parent=${encodeURIComponent(p)}`).join('&');
-  document.getElementById('twitch-chat').src =
-    `https://www.twitch.tv/embed/${CHANNEL}/chat?darkpopout&${chatParents}`;
-
-  document.getElementById('chat-toggle-btn').addEventListener('click', function(){
-    const chat = document.getElementById('twitch-chat');
-    const collapsed = chat.classList.toggle('collapsed');
-    this.textContent = collapsed ? 'show' : 'hide';
-  });
-
-  /* ====== FILM PLAYER ====== */
-  const filmVideo = document.getElementById('film-video');
-  const filmYt = document.getElementById('film-yt');
-  const filmEmpty = document.getElementById('film-empty-msg');
-  const filmTitleDisplay = document.getElementById('film-title-display');
-  const filmUrlInput = document.getElementById('film-url');
-
-  function extractYouTubeId(url){
-    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
-    return m ? m[1] : null;
-  }
-
-  function resetFilmStage(){
-    filmVideo.pause();
-    filmVideo.removeAttribute('src');
-    filmVideo.load();
-    filmVideo.style.display = 'none';
-    filmYt.src = '';
-    filmYt.style.display = 'none';
-    filmEmpty.style.display = 'block';
-    filmTitleDisplay.textContent = '';
-  }
-
-  function loadFilmFromUrl(url){
-    if(!url) return;
-    const ytId = extractYouTubeId(url);
-    filmEmpty.style.display = 'none';
-    if(ytId){
-      filmVideo.style.display = 'none';
-      filmYt.style.display = 'block';
-      filmYt.src = `https://www.youtube.com/embed/${ytId}?autoplay=0`;
-      filmTitleDisplay.textContent = 'YouTube source loaded';
-    } else {
-      filmYt.style.display = 'none';
-      filmVideo.style.display = 'block';
-      filmVideo.src = url;
-      filmTitleDisplay.textContent = 'Direct video source loaded';
-    }
-  }
-
-  document.getElementById('film-load-url').addEventListener('click', function(){
-    loadFilmFromUrl(filmUrlInput.value.trim());
-  });
-  filmUrlInput.addEventListener('keydown', function(e){
-    if(e.key === 'Enter') loadFilmFromUrl(filmUrlInput.value.trim());
-  });
-
-  document.getElementById('film-file').addEventListener('change', function(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    filmEmpty.style.display = 'none';
-    filmYt.style.display = 'none';
-    filmYt.src = '';
-    filmVideo.style.display = 'block';
-    filmVideo.src = objectUrl;
-    filmTitleDisplay.textContent = file.name;
-  });
-
-  document.getElementById('film-clear').addEventListener('click', function(){
-    filmUrlInput.value = '';
-    resetFilmStage();
-  });
-
-  /* ====== SWITCHER (focus bay) ====== */
-  const frameTwitch = document.getElementById('frame-twitch');
-  const frameFilm = document.getElementById('frame-film');
-  const tagTwitch = document.getElementById('tag-twitch');
-  const tagFilm = document.getElementById('tag-film');
-  const btnStream = document.getElementById('switch-to-stream');
-  const btnFilm = document.getElementById('switch-to-film');
-
-  function focusStream(){
-    frameTwitch.classList.add('on-air');
-    frameTwitch.classList.remove('on-air-teal');
-    frameFilm.classList.remove('on-air');
-    tagTwitch.style.display = 'block';
-    tagFilm.style.display = 'none';
-    btnStream.classList.add('active-orange');
-    btnFilm.classList.remove('active-teal');
-  }
-  function focusFilm(){
-    frameFilm.classList.add('on-air-teal');
-    frameTwitch.classList.remove('on-air');
-    tagFilm.style.display = 'block';
-    tagTwitch.style.display = 'none';
-    btnFilm.classList.add('active-teal');
-    btnStream.classList.remove('active-orange');
-  }
-  btnStream.addEventListener('click', focusStream);
-  btnFilm.addEventListener('click', focusFilm);
-</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
