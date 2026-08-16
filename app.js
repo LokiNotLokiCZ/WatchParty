@@ -11,13 +11,13 @@ const HOST_PASSCODE = "brasla2026";
 // Fill this in with your Firebase project's web config (see setup steps).
 // Get it from: Firebase Console -> Project settings -> General -> Your apps -> SDK setup and config
 const firebaseConfig = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://PASTE_PROJECT_ID-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyDOMImmROfhht_wJh5hpL92BL-i5TGs32Q",
+  authDomain: "watchparty-d24f6.firebaseapp.com",
+  databaseURL: "https://watchparty-d24f6-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "watchparty-d24f6",
+  storageBucket: "watchparty-d24f6.firebasestorage.app",
+  messagingSenderId: "725036907885",
+  appId: "1:725036907885:web:4635194bd6dd4429b2ee64"
 };
 
 /* ============================================================
