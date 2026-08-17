@@ -319,17 +319,6 @@ body{
 }
 .tray-chip:hover{ border-color:var(--orange); color:var(--orange); }
 
-.blerp-fallback{
-  font-family:var(--font-mono);
-  font-weight:600;
-  font-size:10.5px;
-  color:var(--text-faint);
-  padding:6px 10px;
-  border-top:1px solid var(--line);
-  background:var(--panel);
-}
-.blerp-fallback a{ color:var(--teal); }
-
 footer{
   text-align:center; padding:26px 20px 40px;
   font-family:var(--font-mono); font-size:11px; color:var(--text-faint); letter-spacing:0.5px;
