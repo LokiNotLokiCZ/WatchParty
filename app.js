@@ -368,6 +368,7 @@ function initPanelPosition(panel, defaultX, defaultY){
   panel.style.left = (pos ? pos.x : defaultX) + 'px';
   panel.style.top = (pos ? pos.y : defaultY) + 'px';
   if(pos && pos.width) panel.style.width = pos.width + 'px';
+  if(pos && pos.height) panel.style.height = pos.height + 'px';
 }
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
@@ -422,7 +423,9 @@ document.getElementById('reset-layout-btn').addEventListener('click', function()
   const twitch = document.getElementById('panel-twitch');
   const film = document.getElementById('panel-film');
   twitch.style.width = '560px';
+  twitch.style.height = '460px';
   film.style.width = '560px';
+  film.style.height = '560px';
   initPanelPosition(twitch, 20, 20);
   initPanelPosition(film, 600, 20);
   bringToFront(twitch);
@@ -433,7 +436,7 @@ function makeResizable(panel){
   const handles = panel.querySelectorAll('[data-resize-handle]');
   handles.forEach(handle => {
     const dir = handle.dataset.resizeHandle; // 'nw' | 'ne' | 'sw' | 'se'
-    let resizing = false, startX, startY, startWidth, startLeft, startTop;
+    let resizing = false, startX, startY, startWidth, startHeight, startLeft, startTop;
 
     handle.addEventListener('pointerdown', function(e){
       if(isSmallScreen()) return;
@@ -441,6 +444,7 @@ function makeResizable(panel){
       handle.setPointerCapture(e.pointerId);
       startX = e.clientX; startY = e.clientY;
       startWidth = panel.offsetWidth;
+      startHeight = panel.offsetHeight;
       startLeft = panel.offsetLeft;
       startTop = panel.offsetTop;
       panel.classList.add('resizing');
@@ -464,14 +468,20 @@ function makeResizable(panel){
       }
       newWidth = Math.min(newWidth, workspace.clientWidth - newLeft - 10);
 
+      let newHeight = isNorth ? startHeight - dy : startHeight + dy;
+      newHeight = Math.max(260, newHeight);
+
       let newTop = startTop;
       if(isNorth){
-        newTop = Math.max(0, startTop + dy);
+        newTop = startTop + (startHeight - newHeight);
+        newTop = Math.max(0, newTop);
       }
+      newHeight = Math.min(newHeight, workspace.clientHeight - newTop - 10);
 
       panel.style.width = newWidth + 'px';
+      panel.style.height = newHeight + 'px';
       panel.style.left = newLeft + 'px';
-      if(isNorth) panel.style.top = newTop + 'px';
+      panel.style.top = newTop + 'px';
     });
 
     handle.addEventListener('pointerup', function(){
@@ -480,7 +490,13 @@ function makeResizable(panel){
       panel.classList.remove('resizing');
       const layout = loadPanelLayout();
       const id = panel.dataset.panel;
-      layout[id] = { ...(layout[id] || {}), x: panel.offsetLeft, y: panel.offsetTop, width: panel.offsetWidth };
+      layout[id] = {
+        ...(layout[id] || {}),
+        x: panel.offsetLeft,
+        y: panel.offsetTop,
+        width: panel.offsetWidth,
+        height: panel.offsetHeight
+      };
       savePanelLayout(layout);
     });
   });
