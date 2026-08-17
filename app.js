@@ -373,7 +373,6 @@ function initPanelPosition(panel, defaultX, defaultY){
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
 initPanelPosition(document.getElementById('panel-film'), 600, 20);
-initPanelPosition(document.getElementById('panel-blerp'), 20, 500);
 
 function makeDraggable(panel){
   const handle = panel.querySelector('[data-drag-handle]');
@@ -423,19 +422,14 @@ document.getElementById('reset-layout-btn').addEventListener('click', function()
   localStorage.removeItem('wp_panelLayout');
   const twitch = document.getElementById('panel-twitch');
   const film = document.getElementById('panel-film');
-  const blerp = document.getElementById('panel-blerp');
   twitch.style.width = '560px';
   twitch.style.height = '460px';
   film.style.width = '560px';
   film.style.height = '560px';
-  blerp.style.width = '420px';
-  blerp.style.height = '380px';
   initPanelPosition(twitch, 20, 20);
   initPanelPosition(film, 600, 20);
-  initPanelPosition(blerp, 20, 500);
   bringToFront(twitch);
   bringToFront(film);
-  bringToFront(blerp);
 });
 
 function makeResizable(panel){
@@ -514,7 +508,7 @@ function closePanel(id){
   panel.style.display = 'none';
   const chip = document.createElement('button');
   chip.className = 'tray-chip';
-  const labels = { twitch: 'Stream', film: 'Film', chat: 'Chat', blerp: 'Soundboard' };
+  const labels = { twitch: 'Stream', film: 'Film', chat: 'Chat' };
   chip.textContent = (labels[id] || id) + ' — reopen';
   chip.dataset.reopen = id;
   chip.addEventListener('click', () => {
