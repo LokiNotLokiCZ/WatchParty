@@ -372,7 +372,6 @@ function initPanelPosition(panel, defaultX, defaultY){
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
 initPanelPosition(document.getElementById('panel-film'), 600, 20);
-initPanelPosition(document.getElementById('panel-chat'), 1180, 20);
 
 function makeDraggable(panel){
   const handle = panel.querySelector('[data-drag-handle]');
@@ -483,3 +482,14 @@ function closePanel(id){
 document.querySelectorAll('.panel-close').forEach(btn => {
   btn.addEventListener('click', () => closePanel(btn.dataset.close));
 });
+
+/* Chat sidebar toggle */
+const chatSidebar = document.getElementById('chat-sidebar');
+const chatTab = document.getElementById('chat-sidebar-tab');
+const chatCloseBtn = document.getElementById('chat-sidebar-close');
+
+function toggleChatSidebar(){
+  chatSidebar.classList.toggle('closed');
+}
+chatTab.addEventListener('click', toggleChatSidebar);
+chatCloseBtn.addEventListener('click', toggleChatSidebar);
