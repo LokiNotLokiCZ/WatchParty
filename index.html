@@ -43,24 +43,18 @@
     <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
   </div>
 
-  <!-- CHAT PANEL -->
-  <div class="panel" id="panel-chat" data-panel="chat">
-    <div class="panel-header" data-drag-handle>
-      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
+  <!-- CHAT SIDEBAR (fixed dock, not draggable) -->
+  <div id="chat-sidebar" class="open">
+    <div class="sidebar-header">
       <span class="bay-label orange">Chat</span>
       <span class="bay-tag">CH 1 · TWITCH</span>
-      <button class="panel-close" data-close="chat" title="Close panel">✕</button>
+      <button class="panel-close" id="chat-sidebar-close" title="Hide chat">✕</button>
     </div>
-    <div class="panel-body">
-      <div class="chat-wrap">
-        <iframe id="twitch-chat" src=""></iframe>
-      </div>
+    <div class="chat-wrap">
+      <iframe id="twitch-chat" src=""></iframe>
     </div>
-    <div class="resize-handle rh-nw" data-resize-handle="nw" title="Resize"></div>
-    <div class="resize-handle rh-ne" data-resize-handle="ne" title="Resize"></div>
-    <div class="resize-handle rh-sw" data-resize-handle="sw" title="Resize"></div>
-    <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
   </div>
+  <button id="chat-sidebar-tab" title="Toggle chat">💬<span>CHAT</span></button>
 
   <!-- FILM PANEL -->
   <div class="panel" id="panel-film" data-panel="film">
