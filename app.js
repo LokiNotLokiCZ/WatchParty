@@ -406,6 +406,29 @@ function makeDraggable(panel){
 }
 panels.forEach(makeDraggable);
 
+/* Bring whichever panel was last interacted with to the front */
+let topZ = 10;
+function bringToFront(panel){
+  topZ += 1;
+  panel.style.zIndex = topZ;
+}
+panels.forEach(panel => {
+  panel.style.zIndex = topZ;
+  panel.addEventListener('pointerdown', () => bringToFront(panel));
+});
+
+document.getElementById('reset-layout-btn').addEventListener('click', function(){
+  localStorage.removeItem('wp_panelLayout');
+  const twitch = document.getElementById('panel-twitch');
+  const film = document.getElementById('panel-film');
+  twitch.style.width = '560px';
+  film.style.width = '560px';
+  initPanelPosition(twitch, 20, 20);
+  initPanelPosition(film, 600, 20);
+  bringToFront(twitch);
+  bringToFront(film);
+});
+
 function makeResizable(panel){
   const handles = panel.querySelectorAll('[data-resize-handle]');
   handles.forEach(handle => {
