@@ -74,6 +74,7 @@ function applyHostUI(){
   document.getElementById('viewer-note').style.display = isHost ? 'none' : 'block';
   document.getElementById('sync-pill').textContent = isHost ? 'host' : 'viewer';
   document.getElementById('sync-pill').classList.toggle('is-host', isHost);
+  document.dispatchEvent(new CustomEvent('hostchange'));
 }
 
 document.getElementById('host-btn').addEventListener('click', function(){
@@ -373,6 +374,7 @@ function initPanelPosition(panel, defaultX, defaultY){
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
 initPanelPosition(document.getElementById('panel-film'), 600, 20);
+initPanelPosition(document.getElementById('panel-screen'), 20, 500);
 
 function makeDraggable(panel){
   const handle = panel.querySelector('[data-drag-handle]');
@@ -424,12 +426,17 @@ document.getElementById('reset-layout-btn').addEventListener('click', function()
   const film = document.getElementById('panel-film');
   twitch.style.width = '560px';
   twitch.style.height = '460px';
+  const screen = document.getElementById('panel-screen');
   film.style.width = '560px';
   film.style.height = '560px';
+  screen.style.width = '560px';
+  screen.style.height = '560px';
   initPanelPosition(twitch, 20, 20);
   initPanelPosition(film, 600, 20);
+  initPanelPosition(screen, 20, 500);
   bringToFront(twitch);
   bringToFront(film);
+  bringToFront(screen);
 });
 
 function makeResizable(panel){
@@ -508,7 +515,7 @@ function closePanel(id){
   panel.style.display = 'none';
   const chip = document.createElement('button');
   chip.className = 'tray-chip';
-  const labels = { twitch: 'Stream', film: 'Film', chat: 'Chat' };
+  const labels = { twitch: 'Stream', film: 'Film', chat: 'Chat', screen: 'Screen' };
   chip.textContent = (labels[id] || id) + ' — reopen';
   chip.dataset.reopen = id;
   chip.addEventListener('click', () => {

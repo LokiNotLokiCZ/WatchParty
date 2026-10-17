@@ -113,6 +113,42 @@
     <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
   </div>
 
+  <!-- SCREEN SHARE PANEL -->
+  <div class="panel" id="panel-screen" data-panel="screen" style="height:560px;">
+    <div class="panel-header" data-drag-handle>
+      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
+      <span class="bay-label teal">Screen</span>
+      <span class="bay-tag">CH 3 · LIVE SHARE</span>
+      <span class="sync-pill" id="screen-pill">offline</span>
+      <button class="panel-close" data-close="screen" title="Close panel">✕</button>
+    </div>
+
+    <div class="panel-body">
+      <div class="frame" id="frame-screen">
+        <div id="screen-stage">
+          <div class="film-empty" id="screen-empty-msg">Nobody is sharing right now</div>
+          <video id="screen-video" autoplay playsinline muted></video>
+        </div>
+      </div>
+
+      <div class="film-controls" id="screen-controls" style="display:none;">
+        <div class="film-row">
+          <button class="btn" id="screen-start-btn">Start sharing screen</button>
+          <button class="btn danger" id="screen-stop-btn" style="display:none;">Stop sharing</button>
+        </div>
+        <div class="film-note" id="screen-status">Not sharing.</div>
+        <div class="film-note">In the browser's picker choose a screen, window or tab. To include sound, pick a tab (or "entire screen") and tick the audio checkbox.</div>
+      </div>
+
+      <div class="film-note viewer-note" id="screen-viewer-note"></div>
+      <button class="btn" id="screen-retry-btn" style="display:none;">Reconnect</button>
+    </div>
+    <div class="resize-handle rh-nw" data-resize-handle="nw" title="Resize"></div>
+    <div class="resize-handle rh-ne" data-resize-handle="ne" title="Resize"></div>
+    <div class="resize-handle rh-sw" data-resize-handle="sw" title="Resize"></div>
+    <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
+  </div>
+
 </div>
 
 <div id="panel-tray"></div>
@@ -124,6 +160,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="app.js"></script>
+<script src="screen.js"></script>
 
 </body>
 </html>
