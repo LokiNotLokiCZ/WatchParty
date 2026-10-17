@@ -3,7 +3,8 @@
    Host broadcasts their screen over WebRTC to every viewer.
    Firebase Realtime Database is used only for signaling
    (who is live, offers/answers, ICE candidates) — the video
-   itself flows peer-to-peer from the host to each viewer.
+   itself flows peer-to-peer from the host to each viewer
+   (or through a TURN relay when a direct path is impossible).
 
    Depends on globals from app.js: db, firebaseReady, isHost.
    app.js fires a "hostchange" event whenever host mode toggles.
@@ -16,12 +17,44 @@
     return;
   }
 
-  const rtcConfig = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+  /* ----------------------------------------------------------
+     TURN relay (optional, but needed for viewers behind strict
+     NAT / CGNAT / mobile data, where a direct connection fails).
+     Free tier: sign up at https://dashboard.metered.ca, then fill
+     in your app name (the part before .metered.live) and API key.
+     ---------------------------------------------------------- */
+  const TURN = {
+    app: '',
+    apiKey: '',
+    region: 'europe'
   };
+
+  const STUN_ONLY = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ];
+  let hasTurn = false;
+
+  async function loadIceServers(){
+    if(!TURN.app || !TURN.apiKey) return STUN_ONLY;
+    try {
+      const url = new URL('https://' + TURN.app + '.metered.live/api/v1/turn/credentials');
+      url.searchParams.set('apiKey', TURN.apiKey);
+      if(TURN.region) url.searchParams.set('region', TURN.region);
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const servers = await res.json();
+      if(Array.isArray(servers) && servers.length){
+        hasTurn = true;
+        return STUN_ONLY.concat(servers);
+      }
+    } catch(e) {
+      console.warn('[screen] TURN credentials failed, falling back to STUN only', e);
+    }
+    return STUN_ONLY;
+  }
+  const iceServersPromise = loadIceServers();
+
   const MAX_VIDEO_BITRATE = 2500000; // ~2.5 Mbps per viewer, protects the host's upload
 
   const screenRef  = db.ref('rooms/brasla/screen');
@@ -43,23 +76,37 @@
 
   // host state
   let localStream = null;
-  const hostPeers = {}; // viewerId -> { pc, unsubs: [] }
+  let failedViewers = 0;
+  const hostPeers = {}; // viewerId -> { pc, unsubs: [], closed }
 
   // viewer state
   let viewerPc = null;
   let viewerUnsubs = [];
   let joinedSessionId = null;
   let connectionFailed = false;
+  let autoRetried = false;
+  let viewerDiag = { host: 0, srflx: 0, prflx: 0, relay: 0 };
+  let viewerIceState = 'new';
 
   /* ---------------- helpers ---------------- */
   function descToPlain(d){ return { type: d.type, sdp: d.sdp }; }
 
-  function sdpSafe(fn){
+  function safe(fn){
     try { fn(); } catch(e) { /* ignore */ }
   }
 
+  function candidateType(c){
+    if(c.type) return c.type;
+    const m = /\styp\s(\w+)/.exec(c.candidate || '');
+    return m ? m[1] : 'host';
+  }
+
   function connectedCount(){
-    return Object.values(hostPeers).filter(p => p.pc.connectionState === 'connected').length;
+    return Object.values(hostPeers).filter(p => p.pc && p.pc.connectionState === 'connected').length;
+  }
+
+  function makePc(){
+    return iceServersPromise.then(iceServers => new RTCPeerConnection({ iceServers }));
   }
 
   /* ---------------- UI ---------------- */
@@ -72,9 +119,18 @@
     stopBtn.style.display  = (isHost && sharing)  ? 'inline-block' : 'none';
 
     if(isHost){
-      statusEl.textContent = sharing
-        ? 'Sharing — ' + connectedCount() + ' viewer(s) connected.'
-        : (canShare ? 'Not sharing.' : 'This browser cannot share a screen (try desktop Chrome, Edge or Firefox).');
+      if(sharing){
+        let txt = 'Sharing — ' + connectedCount() + ' viewer(s) connected.';
+        if(failedViewers){
+          txt += ' ' + failedViewers + ' connection attempt(s) failed' +
+                 (hasTurn ? '.' : ' — no TURN relay configured, see screen.js.');
+        }
+        statusEl.textContent = txt;
+      } else {
+        statusEl.textContent = canShare
+          ? 'Not sharing.'
+          : 'This browser cannot share a screen (try desktop Chrome, Edge or Firefox).';
+      }
     }
 
     const showVideo = sharing || watching;
@@ -95,14 +151,20 @@
     }
 
     if(!isHost){
+      viewerNote.style.display = 'block';
       if(connectionFailed){
-        viewerNote.style.display = 'block';
-        viewerNote.textContent = 'Connection to the host failed. Press Reconnect to try again.';
+        viewerNote.textContent =
+          'Connection to the host failed. ' +
+          (hasTurn ? 'Press Reconnect to try again.'
+                   : 'Your network blocks direct connections — a TURN relay has to be enabled by the host.') +
+          ' Debug: ice=' + viewerIceState +
+          ' · host ' + viewerDiag.host + ' · srflx ' + viewerDiag.srflx +
+          ' · relay ' + viewerDiag.relay + ' · turn=' + (hasTurn ? 'on' : 'off');
       } else if(watching){
-        viewerNote.style.display = 'block';
         viewerNote.textContent = 'Playing muted — use the video controls to unmute or go fullscreen.';
+      } else if(joinedSessionId){
+        viewerNote.textContent = 'Connecting to the host…';
       } else {
-        viewerNote.style.display = 'block';
         viewerNote.textContent = 'The picture appears here automatically as soon as the host starts sharing.';
       }
       retryBtn.style.display = connectionFailed ? 'inline-block' : 'none';
@@ -116,20 +178,24 @@
   function closeHostPeer(id){
     const peer = hostPeers[id];
     if(!peer) return;
-    peer.unsubs.forEach(f => sdpSafe(f));
-    sdpSafe(() => peer.pc.close());
+    peer.closed = true;
+    peer.unsubs.forEach(f => safe(f));
+    if(peer.pc) safe(() => peer.pc.close());
     delete hostPeers[id];
     signalsRef.child(id).remove();
     renderUI();
   }
 
-  function onViewerAdded(snap){
+  async function onViewerAdded(snap){
     const id = snap.key;
     if(hostPeers[id] || !localStream) return;
 
-    const pc = new RTCPeerConnection(rtcConfig);
-    const unsubs = [];
-    hostPeers[id] = { pc, unsubs };
+    const peer = { pc: null, unsubs: [], closed: false };
+    hostPeers[id] = peer;
+
+    const pc = await makePc();
+    if(peer.closed || !localStream){ safe(() => pc.close()); return; }
+    peer.pc = pc;
 
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
@@ -148,8 +214,14 @@
     pc.onicecandidate = e => {
       if(e.candidate) sigRef.child('hostCandidates').push(e.candidate.toJSON());
     };
+    pc.oniceconnectionstatechange = () => {
+      console.log('[screen] host ice(' + id + '):', pc.iceConnectionState);
+    };
     pc.onconnectionstatechange = () => {
-      if(pc.connectionState === 'failed' || pc.connectionState === 'closed'){
+      if(pc.connectionState === 'failed'){
+        failedViewers++;
+        closeHostPeer(id);
+      } else if(pc.connectionState === 'closed'){
         closeHostPeer(id);
       } else {
         renderUI();
@@ -165,10 +237,10 @@
       try {
         await pc.setRemoteDescription(answer);
         pending.splice(0).forEach(c => pc.addIceCandidate(c).catch(() => {}));
-      } catch(e) { console.error('setRemoteDescription failed', e); }
+      } catch(e) { console.error('[screen] setRemoteDescription failed', e); }
     };
     answerRef.on('value', onAnswer);
-    unsubs.push(() => answerRef.off('value', onAnswer));
+    peer.unsubs.push(() => answerRef.off('value', onAnswer));
 
     const candRef = sigRef.child('viewerCandidates');
     const onCand = s => {
@@ -178,12 +250,12 @@
       else pending.push(c);
     };
     candRef.on('child_added', onCand);
-    unsubs.push(() => candRef.off('child_added', onCand));
+    peer.unsubs.push(() => candRef.off('child_added', onCand));
 
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
       .then(() => sigRef.child('offer').set(descToPlain(pc.localDescription)))
-      .catch(err => console.error('createOffer failed', err));
+      .catch(err => console.error('[screen] createOffer failed', err));
   }
 
   function onViewerRemoved(snap){
@@ -208,6 +280,7 @@
     }
 
     localStream = stream;
+    failedViewers = 0;
     const vTrack = stream.getVideoTracks()[0];
     if(vTrack){
       try { vTrack.contentHint = 'motion'; } catch(e) {}
@@ -253,12 +326,16 @@
   async function joinStream(sessionId){
     joinedSessionId = sessionId;
     connectionFailed = false;
+    viewerDiag = { host: 0, srflx: 0, prflx: 0, relay: 0 };
+    viewerIceState = 'new';
+    renderUI();
 
     const sigRef = signalsRef.child(viewerId);
     await sigRef.remove();
     if(joinedSessionId !== sessionId) return; // left while we were cleaning up
 
-    const pc = new RTCPeerConnection(rtcConfig);
+    const pc = await makePc();
+    if(joinedSessionId !== sessionId){ safe(() => pc.close()); return; }
     viewerPc = pc;
     const pending = [];
 
@@ -269,11 +346,30 @@
       renderUI();
     };
     pc.onicecandidate = e => {
-      if(e.candidate) sigRef.child('viewerCandidates').push(e.candidate.toJSON());
+      if(!e.candidate) return;
+      const t = candidateType(e.candidate);
+      viewerDiag[t] = (viewerDiag[t] || 0) + 1;
+      sigRef.child('viewerCandidates').push(e.candidate.toJSON());
+    };
+    pc.oniceconnectionstatechange = () => {
+      viewerIceState = pc.iceConnectionState;
+      console.log('[screen] viewer ice:', pc.iceConnectionState, viewerDiag);
     };
     pc.onconnectionstatechange = () => {
       if(pc.connectionState === 'failed'){
-        connectionFailed = true;
+        if(!autoRetried){
+          // one silent retry — a fresh offer/answer round often succeeds
+          autoRetried = true;
+          setTimeout(() => {
+            if(joinedSessionId !== sessionId) return;
+            leaveStream();
+            joinStream(sessionId);
+          }, 800);
+        } else {
+          connectionFailed = true;
+          renderUI();
+        }
+      } else {
         renderUI();
       }
     };
@@ -289,7 +385,7 @@
         await pc.setLocalDescription(answer);
         await sigRef.child('answer').set(descToPlain(pc.localDescription));
       } catch(err) {
-        console.error('Answering offer failed', err);
+        console.error('[screen] answering offer failed', err);
         connectionFailed = true;
         renderUI();
       }
@@ -316,9 +412,9 @@
   }
 
   function leaveStream(){
-    viewerUnsubs.forEach(f => sdpSafe(f));
+    viewerUnsubs.forEach(f => safe(f));
     viewerUnsubs = [];
-    if(viewerPc){ sdpSafe(() => viewerPc.close()); viewerPc = null; }
+    if(viewerPc){ safe(() => viewerPc.close()); viewerPc = null; }
     if(!localStream) video.srcObject = null;
 
     if(joinedSessionId){
@@ -338,16 +434,19 @@
     if(isHost){ renderUI(); return; }
     if(live && live.active){
       if(joinedSessionId !== live.sessionId){
+        autoRetried = false;
         leaveStream();
         joinStream(live.sessionId);
       }
     } else {
+      autoRetried = false;
       leaveStream();
     }
   }
 
   retryBtn.addEventListener('click', () => {
     liveRef.once('value').then(s => {
+      autoRetried = false;
       leaveStream();
       const live = s.val();
       if(live && live.active) joinStream(live.sessionId);
