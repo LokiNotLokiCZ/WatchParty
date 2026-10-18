@@ -33,10 +33,17 @@
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
   ];
+  // Public shared relay (no signup) — used until your own Metered keys are filled in above.
+  // Shared and rate-limited, so it may be flaky; your own free Metered account is more reliable.
+  const PUBLIC_TURN = [
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ];
   let hasTurn = false;
 
   async function loadIceServers(){
-    if(!TURN.app || !TURN.apiKey) return STUN_ONLY;
+    if(!TURN.app || !TURN.apiKey){ hasTurn = true; return STUN_ONLY.concat(PUBLIC_TURN); }
     try {
       const url = new URL('https://' + TURN.app + '.metered.live/api/v1/turn/credentials');
       url.searchParams.set('apiKey', TURN.apiKey);
@@ -51,7 +58,8 @@
     } catch(e) {
       console.warn('[screen] TURN credentials failed, falling back to STUN only', e);
     }
-    return STUN_ONLY;
+    hasTurn = true;
+    return STUN_ONLY.concat(PUBLIC_TURN);
   }
   const iceServersPromise = loadIceServers();
 
