@@ -46,6 +46,15 @@
   let hasTurn = false;
 
   async function loadIceServers(){
+    // 1) Cloudflare TURN via the Vercel function /api/turn (preferred, 1000 GB/month free)
+    try {
+      const r = await fetch('/api/turn', { cache: 'no-store' });
+      if(r.ok){
+        const d = await r.json();
+        if(d.iceServers && d.iceServers.length){ hasTurn = true; return d.iceServers; }
+      }
+    } catch(e) { console.warn('[screen] /api/turn unavailable, using fallback', e); }
+    // 2) fallback below: Metered credentials
     if(!TURN.app || !TURN.apiKey){ hasTurn = true; return STUN_ONLY.concat(PUBLIC_TURN); }
     try {
       const url = new URL('https://' + TURN.app + '.metered.live/api/v1/turn/credentials');
