@@ -35,10 +35,13 @@
   ];
   // Public shared relay (no signup) — used until your own Metered keys are filled in above.
   // Shared and rate-limited, so it may be flaky; your own free Metered account is more reliable.
+  const U = 'd3c2d578464add5b3315254d', C = 'cfs5zeXZbjvm+4pd';
   const PUBLIC_TURN = [
-    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    { urls: 'turn:global.relay.metered.ca:80', username: U, credential: C },
+    { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: U, credential: C },
+    { urls: 'turn:global.relay.metered.ca:443', username: U, credential: C },
+    { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: U, credential: C }
   ];
   let hasTurn = false;
 
