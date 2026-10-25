@@ -44,6 +44,7 @@
     { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: U, credential: C }
   ];
   let hasTurn = false;
+  let turnSource = 'none';
 
   async function loadIceServers(){
     // 1) Cloudflare TURN via the Vercel function /api/turn (preferred, 1000 GB/month free)
@@ -51,11 +52,11 @@
       const r = await fetch('/api/turn', { cache: 'no-store' });
       if(r.ok){
         const d = await r.json();
-        if(d.iceServers && d.iceServers.length){ hasTurn = true; return d.iceServers; }
+        if(d.iceServers && d.iceServers.length){ hasTurn = true; turnSource = 'cloudflare'; return d.iceServers; }
       }
     } catch(e) { console.warn('[screen] /api/turn unavailable, using fallback', e); }
     // 2) fallback below: Metered credentials
-    if(!TURN.app || !TURN.apiKey){ hasTurn = true; return STUN_ONLY.concat(PUBLIC_TURN); }
+    if(!TURN.app || !TURN.apiKey){ hasTurn = true; turnSource = 'metered'; return STUN_ONLY.concat(PUBLIC_TURN); }
     try {
       const url = new URL('https://' + TURN.app + '.metered.live/api/v1/turn/credentials');
       url.searchParams.set('apiKey', TURN.apiKey);
@@ -70,7 +71,7 @@
     } catch(e) {
       console.warn('[screen] TURN credentials failed, falling back to STUN only', e);
     }
-    hasTurn = true;
+    hasTurn = true; turnSource = 'metered';
     return STUN_ONLY.concat(PUBLIC_TURN);
   }
   const iceServersPromise = loadIceServers();
@@ -179,7 +180,7 @@
                    : 'Your network blocks direct connections — a TURN relay has to be enabled by the host.') +
           ' Debug: ice=' + viewerIceState +
           ' · host ' + viewerDiag.host + ' · srflx ' + viewerDiag.srflx +
-          ' · relay ' + viewerDiag.relay + ' · turn=' + (hasTurn ? 'on' : 'off');
+          ' · relay ' + viewerDiag.relay + ' · turn=' + turnSource;
       } else if(watching){
         viewerNote.textContent = 'Playing muted — use the video controls to unmute or go fullscreen.';
       } else if(joinedSessionId){
