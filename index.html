@@ -2,7 +2,8 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D0F16">
 <title>Brasla_ · Watch Party</title>
 <link rel="stylesheet" href="style.css">
 
@@ -39,14 +40,14 @@
   <div class="panel" id="panel-twitch" data-panel="twitch">
     <div class="panel-header" data-drag-handle>
       <span class="panel-drag-dots" aria-hidden="true">⠿</span>
-      <span class="bay-label orange">Stream</span>
+      <span class="bay-label accent">Stream</span>
       <span class="bay-tag">CH 1 · TWITCH</span>
       <button class="panel-close" data-close="twitch" title="Close panel">✕</button>
     </div>
 
     <div class="panel-body">
       <div class="frame on-air" id="frame-twitch">
-        <span class="corner-tag pgm-orange" id="tag-twitch">PGM</span>
+        <span class="corner-tag pgm-accent" id="tag-twitch">PGM</span>
         <div id="twitch-embed"></div>
       </div>
     </div>
@@ -59,7 +60,7 @@
   <!-- CHAT SIDEBAR (fixed dock, not draggable) -->
   <div id="chat-sidebar" class="open">
     <div class="sidebar-header">
-      <span class="bay-label orange">Chat</span>
+      <span class="bay-label accent">Chat</span>
       <span class="bay-tag">CH 1 · TWITCH</span>
       <button class="panel-close" id="chat-sidebar-close" title="Hide chat">✕</button>
     </div>
@@ -158,6 +159,7 @@
 <script src="https://embed.twitch.tv/embed/v1.js"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="app.js"></script>
 <script src="screen.js"></script>

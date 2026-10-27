@@ -93,7 +93,7 @@
   const retryBtn    = document.getElementById('screen-retry-btn');
 
   const canShare = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
-  const viewerId = 'v_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  let viewerId = null; // set per join: <auth uid>_<random> (the database rules require this prefix)
 
   // host state
   let localStream = null;
@@ -345,7 +345,9 @@
 
   /* ---------------- VIEWER ---------------- */
   async function joinStream(sessionId){
+    await authReady;
     joinedSessionId = sessionId;
+    viewerId = auth.currentUser.uid + '_' + Math.random().toString(36).slice(2, 8);
     connectionFailed = false;
     viewerDiag = { host: 0, srflx: 0, prflx: 0, relay: 0 };
     viewerIceState = 'new';
@@ -402,6 +404,22 @@
       try {
         await pc.setRemoteDescription(offer);
         pending.splice(0).forEach(c => pc.addIceCandidate(c).catch(() => {}));
+        // Phones (esp. Xiaomi/Redmi) sometimes show a black picture with hardware H.264/VP9 decoding.
+        // On mobile prefer VP8 (software-decoded, works everywhere).
+        if(/Android|Mobi/i.test(navigator.userAgent) && window.RTCRtpReceiver && RTCRtpReceiver.getCapabilities){
+          try {
+            const caps = RTCRtpReceiver.getCapabilities('video');
+            if(caps && caps.codecs){
+              const rank = c => /vp8/i.test(c.mimeType) ? 0 : /h264/i.test(c.mimeType) ? 1 : 2;
+              const sorted = caps.codecs.slice().sort((a, b) => rank(a) - rank(b));
+              pc.getTransceivers().forEach(t => {
+                if(t.receiver && t.receiver.track && t.receiver.track.kind === 'video' && t.setCodecPreferences){
+                  t.setCodecPreferences(sorted);
+                }
+              });
+            }
+          } catch(e) { console.warn('[screen] codec preference failed', e); }
+        }
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         await sigRef.child('answer').set(descToPlain(pc.localDescription));
@@ -438,7 +456,7 @@
     if(viewerPc){ safe(() => viewerPc.close()); viewerPc = null; }
     if(!localStream) video.srcObject = null;
 
-    if(joinedSessionId){
+    if(joinedSessionId && viewerId){
       const me = viewersRef.child(viewerId);
       const sig = signalsRef.child(viewerId);
       me.onDisconnect().cancel();
@@ -489,6 +507,6 @@
     if(localStream) liveRef.set({ active: false });
   });
 
-  liveRef.on('value', snap => handleLive(snap.val()));
   renderUI();
+  authReady.then(() => liveRef.on('value', snap => handleLive(snap.val())));
 })();

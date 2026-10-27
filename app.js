@@ -5,8 +5,8 @@ const CHANNEL = "brasla_";
 const PARENT_DOMAINS = ["localhost", "127.0.0.1", window.location.hostname].filter(Boolean);
 const UNIQUE_PARENTS = [...new Set(PARENT_DOMAINS)];
 
-// Change this passcode before deploying. Anyone with it can become host.
-const HOST_PASSCODE = "brasla2026";
+// NOTE: the host passcode is no longer in this file. It lives in the Vercel
+// environment variable HOST_PASSCODE and is checked by /api/host-login.
 
 // Fill this in with your Firebase project's web config (see setup steps).
 // Get it from: Firebase Console -> Project settings -> General -> Your apps -> SDK setup and config
@@ -26,9 +26,11 @@ const firebaseConfig = {
 let db = null;
 let stateRef = null;
 let firebaseReady = false;
+let auth = null;
 
 try {
   firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
   db = firebase.database();
   stateRef = db.ref('rooms/brasla/state');
   firebaseReady = true;
@@ -65,7 +67,7 @@ document.getElementById('twitch-chat').src =
 /* ============================================================
    HOST MODE
    ============================================================ */
-let isHost = localStorage.getItem('wp_isHost') === '1';
+let isHost = false;
 
 function applyHostUI(){
   document.getElementById('host-btn').textContent = isHost ? 'HOST ✓' : 'HOST';
@@ -77,20 +79,65 @@ function applyHostUI(){
   document.dispatchEvent(new CustomEvent('hostchange'));
 }
 
-document.getElementById('host-btn').addEventListener('click', function(){
+/* ------------------------------------------------------------
+   Authentication
+   Everyone signs in anonymously (so the database can require a login).
+   The host additionally signs in with a custom token minted by
+   /api/host-login after the passcode is verified ON THE SERVER.
+   Host rights are a signed claim (token.host === true) that the Firebase
+   security rules check — they cannot be faked from the browser.
+   ------------------------------------------------------------ */
+let authResolve;
+const authReady = new Promise(res => { authResolve = res; });
+
+async function refreshHostFlag(user){
+  let host = false;
+  try {
+    const t = await user.getIdTokenResult();
+    host = t.claims && t.claims.host === true;
+  } catch(e) {}
+  const changed = host !== isHost;
+  isHost = host;
+  if(isHost) playbackUnlocked = true;
+  if(changed || !authReady.resolved){ applyHostUI(); }
+}
+
+if(firebaseReady){
+  auth.onAuthStateChanged(async user => {
+    if(!user){
+      try { await auth.signInAnonymously(); } catch(e) { console.error('Anonymous sign-in failed — enable Anonymous in Firebase Authentication.', e); authResolve(); }
+      return;
+    }
+    await refreshHostFlag(user);
+    authReady.resolved = true;
+    authResolve();
+  });
+} else {
+  authResolve();
+}
+
+document.getElementById('host-btn').addEventListener('click', async function(){
+  if(!firebaseReady) return;
   if(isHost){
-    isHost = false;
-    localStorage.removeItem('wp_isHost');
-    applyHostUI();
+    // Leave host mode: switch straight to a fresh anonymous user (no gap without auth).
+    try { await auth.signInAnonymously(); } catch(e) { console.error(e); }
     return;
   }
   const entered = prompt('Host passcode:');
-  if(entered === HOST_PASSCODE){
-    isHost = true;
-    localStorage.setItem('wp_isHost', '1');
-    applyHostUI();
-  } else if(entered !== null){
-    alert('Wrong passcode.');
+  if(entered === null) return;
+  try {
+    const res = await fetch('/api/host-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: entered })
+    });
+    if(res.status === 429){ alert('Too many attempts. Try again in a few minutes.'); return; }
+    if(!res.ok){ alert('Wrong passcode.'); return; }
+    const data = await res.json();
+    await auth.signInWithCustomToken(data.token);
+  } catch(e) {
+    console.error(e);
+    alert('Host login failed. Check your connection and try again.');
   }
 });
 applyHostUI();
@@ -191,9 +238,17 @@ function onYtStateChange(e){
   }
 }
 
+function isSafeHttpsUrl(url){
+  return typeof url === 'string' && url.length <= 2000 && /^https:\/\/[^\s]+$/i.test(url);
+}
+
 function loadFilmFromUrl(url, writeToFirebase){
   if(!url) return;
   const ytId = extractYouTubeId(url);
+  if(!ytId && !isSafeHttpsUrl(url)){
+    alert('Only secure links are allowed: use an https:// video URL or a YouTube link.');
+    return;
+  }
   filmEmpty.style.display = 'none';
 
   if(ytId){
@@ -287,6 +342,10 @@ function applyRemoteState(state){
   }
 
   const wantType = state.source.type;
+  // Never trust remote data blindly: only accept https video URLs / plain YouTube ids.
+  if(wantType === 'mp4' && !isSafeHttpsUrl(state.source.url)) { suppressLocalEvents = false; return; }
+  if(wantType === 'youtube' && !/^[A-Za-z0-9_-]{6,20}$/.test(state.source.youtubeId || '')) { suppressLocalEvents = false; return; }
+  if(wantType !== 'mp4' && wantType !== 'youtube') { suppressLocalEvents = false; return; }
   const needsLoad =
     (wantType === 'mp4' && (currentSourceType !== 'mp4' || filmVideo.src !== state.source.url)) ||
     (wantType === 'youtube' && currentSourceType !== 'youtube');
@@ -340,7 +399,7 @@ function applyRemoteState(state){
 }
 
 if(firebaseReady){
-  stateRef.on('value', snap => applyRemoteState(snap.val()));
+  authReady.then(() => stateRef.on('value', snap => applyRemoteState(snap.val())));
 } else {
   filmEmpty.innerHTML = 'Sync not configured yet<br><b>Fill in firebaseConfig in app.js to enable syncing.</b>';
 }
@@ -537,5 +596,7 @@ const chatCloseBtn = document.getElementById('chat-sidebar-close');
 function toggleChatSidebar(){
   chatSidebar.classList.toggle('closed');
 }
+// On phones the chat starts hidden (it is a bottom sheet there)
+if(isSmallScreen()) chatSidebar.classList.add('closed');
 chatTab.addEventListener('click', toggleChatSidebar);
 chatCloseBtn.addEventListener('click', toggleChatSidebar);
