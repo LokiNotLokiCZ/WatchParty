@@ -129,6 +129,25 @@
   let viewerIceState = 'new';
 
   /* ---------------- helpers ---------------- */
+  // Opus defaults are tuned for voice calls (mono, low bitrate, DTX) -> "cinema/echo" sound. Ask for music-grade stereo.
+  function hiFiAudio(d){
+    if(!d || !d.sdp) return d;
+    const m = d.sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+    if(!m) return d;
+    const pt = m[1];
+    const want = 'stereo=1;sprop-stereo=1;maxaveragebitrate=160000;usedtx=0;useinbandfec=1;cbr=1';
+    const re = new RegExp('a=fmtp:' + pt + ' ([^\\r\\n]*)');
+    let sdp;
+    if(re.test(d.sdp)){
+      sdp = d.sdp.replace(re, (all, params) => {
+        const kept = params.split(';').filter(p => p && !/^(stereo|sprop-stereo|maxaveragebitrate|usedtx|cbr|useinbandfec)=/.test(p));
+        return 'a=fmtp:' + pt + ' ' + kept.concat(want.split(';')).join(';');
+      });
+    } else {
+      sdp = d.sdp.replace(new RegExp('(a=rtpmap:' + pt + ' opus/48000/2\\r?\\n)'), '$1a=fmtp:' + pt + ' ' + want + '\r\n');
+    }
+    return { type: d.type, sdp };
+  }
   function descToPlain(d){ return { type: d.type, sdp: d.sdp }; }
 
   function safe(fn){
@@ -241,6 +260,12 @@
 
     // cap video bitrate so the host's upload survives several viewers
     pc.getSenders().forEach(sender => {
+      if(sender.track && sender.track.kind === 'audio'){
+        const ap = sender.getParameters();
+        if(!ap.encodings || !ap.encodings.length) ap.encodings = [{}];
+        ap.encodings[0].maxBitrate = 160000;
+        sender.setParameters(ap).catch(() => {});
+      }
       if(sender.track && sender.track.kind === 'video'){
         const params = sender.getParameters();
         if(!params.encodings || !params.encodings.length) params.encodings = [{}];
@@ -299,7 +324,7 @@
     peer.unsubs.push(() => candRef.off('child_added', onCand));
 
     pc.createOffer()
-      .then(offer => pc.setLocalDescription(offer))
+      .then(offer => pc.setLocalDescription(hiFiAudio(offer)))
       .then(() => sigRef.child('offer').set(descToPlain(pc.localDescription)))
       .catch(err => console.error('[screen] createOffer failed', err));
   }
@@ -319,7 +344,7 @@
     try {
       stream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: true
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 }
       });
     } catch(e) {
       return; // user cancelled the picker
@@ -447,7 +472,7 @@
           } catch(e) { console.warn('[screen] codec preference failed', e); }
         }
         const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+        await pc.setLocalDescription(hiFiAudio(answer));
         await sigRef.child('answer').set(descToPlain(pc.localDescription));
       } catch(err) {
         console.error('[screen] answering offer failed', err);
