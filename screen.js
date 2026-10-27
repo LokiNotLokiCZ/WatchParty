@@ -76,7 +76,7 @@
   }
   const iceServersPromise = loadIceServers();
 
-  const MAX_VIDEO_BITRATE = 2500000; // ~2.5 Mbps per viewer, protects the host's upload
+  const MAX_VIDEO_BITRATE = 6000000; // ~6 Mbps per viewer (sharper picture; the browser still adapts down if the connection is slow)
 
   const screenRef  = db.ref('rooms/brasla/screen');
   const liveRef    = screenRef.child('live');
@@ -245,6 +245,7 @@
         const params = sender.getParameters();
         if(!params.encodings || !params.encodings.length) params.encodings = [{}];
         params.encodings[0].maxBitrate = MAX_VIDEO_BITRATE;
+        params.degradationPreference = 'maintain-resolution';
         // cap the picture at 1080p: easier for phones to decode and lighter on the host's upload
         try {
           const w = (sender.track.getSettings() || {}).width || 0;
@@ -317,7 +318,7 @@
     let stream;
     try {
       stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 30 } },
+        video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: true
       });
     } catch(e) {
@@ -328,7 +329,7 @@
     failedViewers = 0;
     const vTrack = stream.getVideoTracks()[0];
     if(vTrack){
-      try { vTrack.contentHint = 'motion'; } catch(e) {}
+      try { vTrack.contentHint = 'detail'; } catch(e) {}
       vTrack.addEventListener('ended', stopSharing); // browser's own "Stop sharing" bar
     }
 
