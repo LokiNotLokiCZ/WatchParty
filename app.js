@@ -284,8 +284,7 @@ function makeSplitter(el, onMove, onDone, onReset, onKey){
 // safety net: never leave the page stuck in "resizing" mode (that would block clicks inside the chat)
 ['pointerup','pointercancel','blur'].forEach(ev => window.addEventListener(ev, () => document.body.classList.remove('resizing')));
 
-makeSplitter(
-  splitTiles,
+const tileSplitCfg = [
   e => {
     const a = document.getElementById('tile-screen').getBoundingClientRect();
     const b = document.getElementById('tile-stream').getBoundingClientRect();
@@ -304,10 +303,12 @@ makeSplitter(
     if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){ tileRatio = clamp(tileRatio + step, 0.2, 0.8); applyRatio(); return true; }
     return false;
   }
-);
+];
+makeSplitter(splitTiles, ...tileSplitCfg);
+makeSplitter(document.getElementById('grip-screen'), ...tileSplitCfg);
+makeSplitter(document.getElementById('grip-stream'), ...tileSplitCfg);
 
-makeSplitter(
-  splitChat,
+const chatSplitCfg = [
   e => { chatWidth = clamp(Math.round(window.innerWidth - e.clientX - 16), 280, 680); applyChatWidth(); },
   () => { try { localStorage.setItem('wp_chatW', String(chatWidth)); } catch(e) {} },
   () => { chatWidth = 380; applyChatWidth(); },
@@ -316,7 +317,9 @@ makeSplitter(
     if(e.key === 'ArrowRight'){ chatWidth = clamp(chatWidth - 20, 280, 680); applyChatWidth(); return true; }
     return false;
   }
-);
+];
+makeSplitter(splitChat, ...chatSplitCfg);
+makeSplitter(document.getElementById('grip-chat'), ...chatSplitCfg);
 
 /* ============================================================
    TWITCH MENU  (log in / log out / reload — affects stream AND chat)

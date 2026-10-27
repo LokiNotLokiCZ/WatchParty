@@ -418,6 +418,24 @@ body.resizing .app{ transition:none; }
 .editing .floating:not(.minimized) .tile-resize{ display:block !important; }
 .editing .tile, .editing .chat{ border-color:rgba(255,122,61,0.5); }
 .editing .floating .tile-tools, .editing .tile-tools{ opacity:1; }
+/* corner grips on docked windows (visible only while editing) */
+.dock-grip{
+  display:none; position:absolute; width:34px; height:34px; z-index:8; touch-action:none;
+  background:
+    linear-gradient(135deg, transparent 0 46%, var(--accent) 46% 54%, transparent 54% 66%, var(--accent) 66% 74%, transparent 74% 86%, var(--accent) 86% 94%, transparent 94%);
+  filter:drop-shadow(0 0 6px rgba(255,122,61,0.7));
+}
+.editing .dock-grip{ display:block; }
+.grip-br{ right:0; bottom:0; cursor:nwse-resize; border-radius:0 0 20px 0; }
+.grip-bl{ left:0; bottom:0; cursor:nesw-resize; border-radius:0 0 0 20px; transform:scaleX(-1); }
+.stage[data-view="screen"] .dock-grip, .stage.has-float .dock-grip, .floating .dock-grip{ display:none !important; }
+.chat.floating .dock-grip{ display:none !important; }
+.app.chat-floating #grip-chat{ display:none !important; }
+@media (max-width:1200px){
+  #grip-stream{ bottom:auto; top:0; border-radius:20px 0 0 0; transform:scale(-1,-1); cursor:nwse-resize; }
+}
+.editing .split span, .editing .split-chat span{ width:6px; height:84px; box-shadow:0 0 14px rgba(255,122,61,0.6); }
+@media (max-width:1200px){ .editing .split span{ width:84px; height:6px; } }
 #edit-layout.active{ color:#fff; border-color:transparent; background:linear-gradient(135deg,var(--accent),var(--accent-2)); }
 
 /* chat as a floating window */
