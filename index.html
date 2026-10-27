@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0D0F16">
+<meta name="theme-color" content="#0A0A0F">
 <title>Brasla_ · Watch Party</title>
 <link rel="stylesheet" href="style.css">
 
@@ -21,143 +21,105 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark">WATCH<span>·</span>PARTY</div>
-    <div class="brand-sub">brasla_ // co-watch console</div>
-  </div>
-  <div class="status-cluster">
-    <div class="live-pill"><span class="live-dot"></span>ON TWITCH.TV</div>
-    <button class="host-btn" id="host-btn" title="Unlock host controls">HOST</button>
-    <button class="host-btn" id="reset-layout-btn" title="Reset panel positions">RESET</button>
-    <div class="clock" id="clock">--:--:--</div>
-  </div>
-</div>
+<div class="app" id="app">
 
-<div id="workspace">
-
-  <!-- TWITCH PANEL -->
-  <div class="panel" id="panel-twitch" data-panel="twitch">
-    <div class="panel-header" data-drag-handle>
-      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
-      <span class="bay-label accent">Stream</span>
-      <span class="bay-tag">CH 1 · TWITCH</span>
-      <button class="panel-close" data-close="twitch" title="Close panel">✕</button>
+  <!-- ============ TOP BAR (floating) ============ -->
+  <header class="bar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">Watch Party</div>
+        <div class="brand-channel">Brasla_</div>
+      </div>
     </div>
 
-    <div class="panel-body">
-      <div class="frame on-air" id="frame-twitch">
-        <span class="corner-tag pgm-accent" id="tag-twitch">PGM</span>
+    <nav class="views" id="views" aria-label="Zobrazení">
+      <button class="view-btn" data-view="screen"><span class="dot" id="screen-dot"></span>Obrazovka</button>
+      <button class="view-btn" data-view="both">Obojí</button>
+      <button class="view-btn" data-view="stream">Stream</button>
+    </nav>
+
+    <div class="bar-right">
+      <div class="live-pill" title="Brasla_ na Twitchi"><span class="live-dot"></span>Twitch</div>
+      <button class="chip-btn" id="host-btn" title="Přihlášení hosta">HOST</button>
+      <button class="chip-btn icon" id="chat-toggle" title="Zobrazit / skrýt chat" aria-label="Chat">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage" id="stage" data-view="both">
+
+    <!-- Screen share -->
+    <section class="tile" id="tile-screen">
+      <div class="tile-media" id="screen-stage">
+        <div class="empty" id="screen-empty-msg">Nikdo zrovna nesdílí obrazovku</div>
+        <video id="screen-video" autoplay playsinline muted></video>
+      </div>
+
+      <div class="tile-label">
+        <span class="tile-name">Obrazovka</span>
+        <span class="sync-pill" id="screen-pill">offline</span>
+      </div>
+      <button class="tile-fs" data-fs="screen" title="Celá obrazovka" aria-label="Celá obrazovka">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+
+      <!-- host controls -->
+      <div class="dock" id="screen-controls" style="display:none;">
+        <div class="dock-main">
+          <button class="btn" id="screen-start-btn">Začít sdílet obrazovku</button>
+          <button class="btn danger" id="screen-stop-btn" style="display:none;">Ukončit sdílení</button>
+          <div class="dock-status" id="screen-status">Nesdílíš.</div>
+        </div>
+        <div class="dock-tip">V okně prohlížeče vyber obrazovku, okno nebo kartu. Pro zvuk zvol kartu (nebo „celá obrazovka“) a zaškrtni sdílení zvuku.</div>
+      </div>
+
+      <!-- viewer info -->
+      <div class="toast" id="screen-viewer-note"></div>
+      <button class="btn toast-btn" id="screen-retry-btn" style="display:none;">Znovu připojit</button>
+    </section>
+
+    <!-- Twitch stream -->
+    <section class="tile" id="tile-stream">
+      <div class="tile-media" id="frame-twitch">
         <div id="twitch-embed"></div>
       </div>
-    </div>
-    <div class="resize-handle rh-nw" data-resize-handle="nw" title="Resize"></div>
-    <div class="resize-handle rh-ne" data-resize-handle="ne" title="Resize"></div>
-    <div class="resize-handle rh-sw" data-resize-handle="sw" title="Resize"></div>
-    <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
-  </div>
-
-  <!-- CHAT SIDEBAR (fixed dock, not draggable) -->
-  <div id="chat-sidebar" class="open">
-    <div class="sidebar-header">
-      <span class="bay-label accent">Chat</span>
-      <span class="bay-tag">CH 1 · TWITCH</span>
-      <button class="panel-close" id="chat-sidebar-close" title="Hide chat">✕</button>
-    </div>
-    <div class="chat-wrap">
-      <iframe id="twitch-chat" src=""></iframe>
-    </div>
-  </div>
-  <button id="chat-sidebar-tab" title="Toggle chat">💬<span>CHAT</span></button>
-
-  <!-- FILM PANEL -->
-  <div class="panel" id="panel-film" data-panel="film">
-    <div class="panel-header" data-drag-handle>
-      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
-      <span class="bay-label teal">Film</span>
-      <span class="bay-tag">CH 2 · SYNCED</span>
-      <span class="sync-pill" id="sync-pill">viewer</span>
-      <button class="panel-close" data-close="film" title="Close panel">✕</button>
-    </div>
-
-    <div class="panel-body">
-      <div class="frame" id="frame-film">
-        <span class="corner-tag pgm-teal" id="tag-film" style="display:none;">PGM</span>
-        <div id="film-stage">
-          <div class="film-empty" id="film-empty-msg">No source loaded<br><b>Host can load a direct video URL or YouTube link below.</b></div>
-          <button class="join-playback-btn" id="join-playback-btn" style="display:none;">▶ Click to join playback</button>
-          <video id="film-video" controls></video>
-          <div id="film-yt"></div>
-        </div>
+      <div class="tile-label">
+        <span class="tile-name">Stream</span>
+        <span class="sync-pill is-twitch">Twitch</span>
       </div>
+      <button class="tile-fs" data-fs="stream" title="Celá obrazovka" aria-label="Celá obrazovka">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </section>
+  </main>
 
-      <div class="film-title-display" id="film-title-display"></div>
-
-      <div class="film-controls" id="film-controls" style="display:none;">
-        <div class="film-row">
-          <input type="text" class="film-url-input" id="film-url" placeholder="Paste a video URL (.mp4 or YouTube link)">
-          <button class="btn" id="film-load-url">Load</button>
-        </div>
-        <div class="film-row" style="align-items:center; justify-content:space-between;">
-          <label class="film-file-label">
-            <input type="file" id="film-file" accept="video/*">
-          </label>
-          <button class="btn ghost" id="film-clear">Clear</button>
-        </div>
-        <div class="film-note">Local file uploads only play for you — they can't be shared with other viewers. Use a direct video URL or YouTube link to sync.</div>
-      </div>
-      <div class="film-note viewer-note" id="viewer-note">Playback is controlled by the host. Unlock host mode with the HOST button above if you're Loki or Brasla_.</div>
+  <!-- ============ CHAT (docked column, bottom sheet on phones) ============ -->
+  <aside id="chat-sidebar" class="chat">
+    <div class="chat-head">
+      <span class="chat-title">Chat</span>
+      <button class="chip-btn icon" id="chat-sidebar-close" title="Skrýt chat" aria-label="Skrýt chat">✕</button>
     </div>
-    <div class="resize-handle rh-nw" data-resize-handle="nw" title="Resize"></div>
-    <div class="resize-handle rh-ne" data-resize-handle="ne" title="Resize"></div>
-    <div class="resize-handle rh-sw" data-resize-handle="sw" title="Resize"></div>
-    <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
-  </div>
-
-  <!-- SCREEN SHARE PANEL -->
-  <div class="panel" id="panel-screen" data-panel="screen">
-    <div class="panel-header" data-drag-handle>
-      <span class="panel-drag-dots" aria-hidden="true">⠿</span>
-      <span class="bay-label teal">Screen</span>
-      <span class="bay-tag">CH 3 · LIVE SHARE</span>
-      <span class="sync-pill" id="screen-pill">offline</span>
-      <button class="panel-close" data-close="screen" title="Close panel">✕</button>
+    <div class="chat-body">
+      <iframe id="twitch-chat" src="" title="Twitch chat"></iframe>
     </div>
-
-    <div class="panel-body">
-      <div class="frame" id="frame-screen">
-        <div id="screen-stage">
-          <div class="film-empty" id="screen-empty-msg">Nobody is sharing right now</div>
-          <video id="screen-video" autoplay playsinline muted></video>
-        </div>
-      </div>
-
-      <div class="film-controls" id="screen-controls" style="display:none;">
-        <div class="film-row">
-          <button class="btn" id="screen-start-btn">Start sharing screen</button>
-          <button class="btn danger" id="screen-stop-btn" style="display:none;">Stop sharing</button>
-        </div>
-        <div class="film-note" id="screen-status">Not sharing.</div>
-        <div class="film-note">In the browser's picker choose a screen, window or tab. To include sound, pick a tab (or "entire screen") and tick the audio checkbox.</div>
-      </div>
-
-      <div class="film-note viewer-note" id="screen-viewer-note"></div>
-      <button class="btn" id="screen-retry-btn" style="display:none;">Reconnect</button>
-    </div>
-    <div class="resize-handle rh-nw" data-resize-handle="nw" title="Resize"></div>
-    <div class="resize-handle rh-ne" data-resize-handle="ne" title="Resize"></div>
-    <div class="resize-handle rh-sw" data-resize-handle="sw" title="Resize"></div>
-    <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
-  </div>
-
+  </aside>
+  <button id="chat-sidebar-tab" title="Zobrazit chat">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/></svg>
+    <span>Chat</span>
+  </button>
 </div>
 
-<!-- HOST LOGIN (in-page, replaces the browser prompt) -->
+<!-- HOST LOGIN (in-page) -->
 <div id="host-modal" class="modal" hidden>
   <form class="modal-card" id="host-form" autocomplete="off">
-    <div class="modal-title">Host login</div>
-    <div class="modal-sub">Zadej heslo hosta pro ovládání filmu a sdílení obrazovky.</div>
-    <input type="password" id="host-pass" class="film-url-input" placeholder="Heslo" autocomplete="current-password">
+    <div class="modal-title">Přihlášení hosta</div>
+    <div class="modal-sub">Zadej heslo hosta pro sdílení obrazovky.</div>
+    <input type="password" id="host-pass" class="input" placeholder="Heslo" autocomplete="current-password">
     <div class="modal-error" id="host-error" role="alert"></div>
     <div class="modal-actions">
       <button type="button" class="btn ghost" id="host-cancel">Zrušit</button>
@@ -166,12 +128,7 @@
   </form>
 </div>
 
-<div id="panel-tray"></div>
-
-<footer>watch-party console · sync powered by Firebase Realtime Database</footer>
-
 <script src="https://embed.twitch.tv/embed/v1.js"></script>
-<script src="https://www.youtube.com/iframe_api"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
