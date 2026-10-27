@@ -39,20 +39,37 @@ try {
 /* ============================================================
    TWITCH STREAM + CHAT
    ============================================================ */
-try {
-  new Twitch.Embed("twitch-embed", {
-    channel: CHANNEL,
-    parent: UNIQUE_PARENTS,
-    width: "100%",
-    height: "100%",
-    layout: "video",
-    autoplay: false
-  });
-} catch (e) { console.error('Twitch embed failed', e); }
+function createPlayer(){
+  const box = document.getElementById('twitch-embed');
+  box.innerHTML = '';
+  try {
+    new Twitch.Embed("twitch-embed", {
+      channel: CHANNEL,
+      parent: UNIQUE_PARENTS,
+      width: "100%",
+      height: "100%",
+      layout: "video",
+      autoplay: false
+    });
+  } catch (e) { console.error('Twitch embed failed', e); }
+}
 
 const chatParents = UNIQUE_PARENTS.map(p => `parent=${encodeURIComponent(p)}`).join('&');
-document.getElementById('twitch-chat').src =
-  `https://www.twitch.tv/embed/${CHANNEL}/chat?darkpopout&${chatParents}`;
+function loadChat(){
+  document.getElementById('twitch-chat').src =
+    `https://www.twitch.tv/embed/${CHANNEL}/chat?darkpopout&${chatParents}`;
+}
+
+createPlayer();
+loadChat();
+
+/* Reload BOTH the stream and the chat (they read the viewer's own twitch.tv session) */
+function reloadTwitch(){
+  createPlayer();
+  const chat = document.getElementById('twitch-chat');
+  chat.src = 'about:blank';
+  setTimeout(loadChat, 80);
+}
 
 /* ============================================================
    HOST MODE  (verified by Firebase custom token claim, not by the browser)
@@ -159,7 +176,7 @@ const stage = document.getElementById('stage');
 const viewBtns = Array.from(document.querySelectorAll('.view-btn'));
 
 function setView(view){
-  if(!['screen','both','stream'].includes(view)) view = 'both';
+  if(!['screen','both'].includes(view)) view = 'both';
   stage.dataset.view = view;
   viewBtns.forEach(b => b.classList.toggle('active', b.dataset.view === view));
   try { localStorage.setItem('wp_view', view); } catch(e) {}
@@ -213,3 +230,134 @@ setChatOpen(!isSmallScreen());   // phones start with the chat hidden
 document.getElementById('chat-toggle').addEventListener('click', toggleChat);
 document.getElementById('chat-sidebar-tab').addEventListener('click', toggleChat);
 document.getElementById('chat-sidebar-close').addEventListener('click', toggleChat);
+
+
+/* ============================================================
+   RESIZABLE LAYOUT  (handle between the tiles + handle on the chat edge)
+   ============================================================ */
+const root = document.documentElement;
+const splitTiles = document.getElementById('split-tiles');
+const splitChat = document.getElementById('split-chat');
+const stackedLayout = () => window.innerWidth <= 1200;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+let tileRatio = 0.5;
+try { tileRatio = clamp(parseFloat(localStorage.getItem('wp_ratio')) || 0.5, 0.2, 0.8); } catch(e) {}
+function applyRatio(){
+  stage.style.setProperty('--sa', tileRatio + 'fr');
+  stage.style.setProperty('--sb', (1 - tileRatio) + 'fr');
+}
+applyRatio();
+
+let chatWidth = 380;
+try { chatWidth = clamp(parseInt(localStorage.getItem('wp_chatW'), 10) || 380, 280, 680); } catch(e) {}
+function applyChatWidth(){ root.style.setProperty('--chat-w', chatWidth + 'px'); }
+applyChatWidth();
+
+function makeSplitter(el, onMove, onDone, onReset, onKey){
+  let active = false;
+  el.addEventListener('pointerdown', e => {
+    if(isSmallScreen()) return;
+    active = true;
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+    document.body.classList.add('resizing');
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => { if(active) onMove(e); });
+  const end = () => {
+    if(!active) return;
+    active = false;
+    el.classList.remove('dragging');
+    document.body.classList.remove('resizing');
+    onDone();
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('dblclick', () => { onReset(); onDone(); });
+  el.addEventListener('keydown', e => { if(onKey && onKey(e)) { e.preventDefault(); onDone(); } });
+}
+
+// safety net: never leave the page stuck in "resizing" mode (that would block clicks inside the chat)
+['pointerup','pointercancel','blur'].forEach(ev => window.addEventListener(ev, () => document.body.classList.remove('resizing')));
+
+makeSplitter(
+  splitTiles,
+  e => {
+    const a = document.getElementById('tile-screen').getBoundingClientRect();
+    const b = document.getElementById('tile-stream').getBoundingClientRect();
+    if(stackedLayout()){
+      tileRatio = clamp((e.clientY - a.top) / (b.bottom - a.top), 0.2, 0.8);
+    } else {
+      tileRatio = clamp((e.clientX - a.left) / (b.right - a.left), 0.2, 0.8);
+    }
+    applyRatio();
+  },
+  () => { try { localStorage.setItem('wp_ratio', String(tileRatio)); } catch(e) {} },
+  () => { tileRatio = 0.5; applyRatio(); },
+  e => {
+    const step = 0.03;
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowUp'){ tileRatio = clamp(tileRatio - step, 0.2, 0.8); applyRatio(); return true; }
+    if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){ tileRatio = clamp(tileRatio + step, 0.2, 0.8); applyRatio(); return true; }
+    return false;
+  }
+);
+
+makeSplitter(
+  splitChat,
+  e => { chatWidth = clamp(Math.round(window.innerWidth - e.clientX - 16), 280, 680); applyChatWidth(); },
+  () => { try { localStorage.setItem('wp_chatW', String(chatWidth)); } catch(e) {} },
+  () => { chatWidth = 380; applyChatWidth(); },
+  e => {
+    if(e.key === 'ArrowLeft'){ chatWidth = clamp(chatWidth + 20, 280, 680); applyChatWidth(); return true; }
+    if(e.key === 'ArrowRight'){ chatWidth = clamp(chatWidth - 20, 280, 680); applyChatWidth(); return true; }
+    return false;
+  }
+);
+
+/* ============================================================
+   TWITCH MENU  (log in / log out / reload — affects stream AND chat)
+   The embedded player and chat read the viewer's own twitch.tv session,
+   so logging in once in a Twitch window logs in both; we then reload them.
+   ============================================================ */
+const twitchBtn = document.getElementById('twitch-btn');
+const twitchMenu = document.getElementById('twitch-menu');
+const appToast = document.getElementById('app-toast');
+let toastTimer = null;
+
+function showToast(text, ms){
+  appToast.textContent = text;
+  appToast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { appToast.hidden = true; }, ms || 6000);
+}
+function setMenu(open){
+  twitchMenu.hidden = !open;
+  twitchBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+twitchBtn.addEventListener('click', e => { e.stopPropagation(); setMenu(twitchMenu.hidden); });
+document.addEventListener('click', e => { if(!twitchMenu.hidden && !twitchMenu.contains(e.target)) setMenu(false); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') setMenu(false); });
+
+function openTwitchWindow(url, message){
+  setMenu(false);
+  const w = 520, h = 760;
+  const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
+  const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+  const win = window.open(url, 'twitch-session', `width=${w},height=${h},left=${left},top=${top}`);
+  if(!win){ showToast('Prohlížeč zablokoval vyskakovací okno. Povol ho a zkus to znovu.', 7000); return; }
+  showToast(message, 9000);
+  const timer = setInterval(() => {
+    if(win.closed){
+      clearInterval(timer);
+      appToast.hidden = true;
+      reloadTwitch();
+    }
+  }, 600);
+}
+
+document.getElementById('twitch-login').addEventListener('click', () =>
+  openTwitchWindow('https://www.twitch.tv/login', 'Přihlas se v okně Twitche a okno zavři. Stream i chat se pak samy obnoví.'));
+document.getElementById('twitch-logout').addEventListener('click', () =>
+  openTwitchWindow('https://www.twitch.tv/', 'V okně klikni vpravo nahoře na svůj profil → Odhlásit se, pak okno zavři.'));
+document.getElementById('twitch-reload').addEventListener('click', () => { setMenu(false); reloadTwitch(); });

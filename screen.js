@@ -92,6 +92,25 @@
   const viewerNote  = document.getElementById('screen-viewer-note');
   const retryBtn    = document.getElementById('screen-retry-btn');
 
+  /* Phones sometimes refuse to start the picture on their own (or show black).
+     After a moment check it and offer a tap-to-play button + a hint. */
+  const playBtn = document.getElementById('screen-play-btn');
+  let playCheckTimer = null;
+  function checkPlayback(){
+    clearTimeout(playCheckTimer);
+    playCheckTimer = setTimeout(() => {
+      if(isHost || !video.srcObject) { playBtn.style.display = 'none'; return; }
+      const stuck = video.paused || video.videoWidth === 0 || video.readyState < 2;
+      playBtn.style.display = stuck ? 'inline-block' : 'none';
+    }, 2500);
+  }
+  playBtn.addEventListener('click', () => {
+    video.muted = true;
+    video.play().then(() => { playBtn.style.display = 'none'; }).catch(() => {});
+    setTimeout(checkPlayback, 1500);
+  });
+  video.addEventListener('playing', () => { if(video.videoWidth > 0) playBtn.style.display = 'none'; });
+
   const canShare = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
   let viewerId = null; // set per join: <auth uid>_<random> (the database rules require this prefix)
 
@@ -226,6 +245,11 @@
         const params = sender.getParameters();
         if(!params.encodings || !params.encodings.length) params.encodings = [{}];
         params.encodings[0].maxBitrate = MAX_VIDEO_BITRATE;
+        // cap the picture at 1080p: easier for phones to decode and lighter on the host's upload
+        try {
+          const w = (sender.track.getSettings() || {}).width || 0;
+          if(w > 1920) params.encodings[0].scaleResolutionDownBy = w / 1920;
+        } catch(e) {}
         sender.setParameters(params).catch(() => {});
       }
     });
@@ -365,6 +389,7 @@
     pc.ontrack = e => {
       if(video.srcObject !== e.streams[0]) video.srcObject = e.streams[0];
       video.play().catch(() => {});
+      checkPlayback();
       connectionFailed = false;
       renderUI();
     };
