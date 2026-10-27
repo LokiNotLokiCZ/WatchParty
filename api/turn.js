@@ -4,6 +4,8 @@ module.exports = async (req, res) => {
   const keyId = process.env.CF_TURN_KEY_ID;
   const token = process.env.CF_TURN_API_TOKEN;
   res.setHeader('Cache-Control', 'no-store');
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin') { res.status(403).json({ error: 'forbidden' }); return; }
   if (!keyId || !token) {
     res.status(501).json({ error: 'TURN not configured' });
     return;
@@ -14,7 +16,7 @@ module.exports = async (req, res) => {
       {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ttl: 86400 })
+        body: JSON.stringify({ ttl: 21600 })
       }
     );
     if (!r.ok) {
