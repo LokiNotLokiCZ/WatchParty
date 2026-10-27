@@ -260,7 +260,7 @@ applyChatWidth();
 function makeSplitter(el, onMove, onDone, onReset, onKey){
   let active = false;
   el.addEventListener('pointerdown', e => {
-    if(isSmallScreen()) return;
+    if(isSmallScreen() || !document.body.classList.contains('editing')) return;
     active = true;
     el.setPointerCapture(e.pointerId);
     el.classList.add('dragging');
@@ -328,12 +328,19 @@ const twitchMenu = document.getElementById('twitch-menu');
 const appToast = document.getElementById('app-toast');
 let toastTimer = null;
 
-function showToast(text, ms){
-  appToast.textContent = text;
+const appToastText = document.getElementById('app-toast-text');
+const appToastBtn = document.getElementById('app-toast-btn');
+let toastAction = null;
+function showToast(text, ms, action){
+  appToastText.textContent = text;
+  toastAction = action ? action.fn : null;
+  appToastBtn.hidden = !action;
+  if(action) appToastBtn.textContent = action.label;
   appToast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { appToast.hidden = true; }, ms || 6000);
+  if(ms) toastTimer = setTimeout(() => { appToast.hidden = true; }, ms);
 }
+appToastBtn.addEventListener('click', () => { if(toastAction) toastAction(); });
 function setMenu(open){
   twitchMenu.hidden = !open;
   twitchBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -349,20 +356,23 @@ function openTwitchWindow(url, message){
   const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
   const win = window.open(url, 'twitch-session', `width=${w},height=${h},left=${left},top=${top}`);
   if(!win){ showToast('Prohlížeč zablokoval vyskakovací okno. Povol ho a zkus to znovu.', 7000); return; }
-  showToast(message, 9000);
-  const timer = setInterval(() => {
-    if(win.closed){
-      clearInterval(timer);
-      appToast.hidden = true;
-      reloadTwitch();
-    }
-  }, 600);
+  let finished = false;
+  const finish = () => {
+    if(finished) return;
+    finished = true;
+    clearInterval(timer);
+    try { win.close(); } catch(e) {}
+    appToast.hidden = true;
+    reloadTwitch();
+  };
+  const timer = setInterval(() => { if(win.closed) finish(); }, 600);
+  showToast(message, 0, { label: 'Hotovo – obnovit', fn: finish });
 }
 
 document.getElementById('twitch-login').addEventListener('click', () =>
-  openTwitchWindow('https://www.twitch.tv/login', 'Přihlas se v okně Twitche a okno zavři. Stream i chat se pak samy obnoví.'));
+  openTwitchWindow('https://www.twitch.tv/login', 'V okně Twitche se přihlas (pokud už přihlášený jsi, uvidíš svůj profil). Potom klikni na Hotovo.'));
 document.getElementById('twitch-logout').addEventListener('click', () =>
-  openTwitchWindow('https://www.twitch.tv/', 'V okně klikni vpravo nahoře na svůj profil → Odhlásit se, pak okno zavři.'));
+  openTwitchWindow('https://www.twitch.tv/', 'V okně klikni vpravo nahoře na svůj profil → Odhlásit se. Potom klikni na Hotovo.'));
 document.getElementById('twitch-reload').addEventListener('click', () => { setMenu(false); reloadTwitch(); });
 
 
@@ -370,7 +380,7 @@ document.getElementById('twitch-reload').addEventListener('click', () => { setMe
    FLOATING WINDOWS  (pop a tile out, drag it anywhere, resize it,
    shrink it to a small floating icon, or dock it back)
    ============================================================ */
-const tileEls = { screen: document.getElementById('tile-screen'), stream: document.getElementById('tile-stream') };
+const tileEls = { screen: document.getElementById('tile-screen'), stream: document.getElementById('tile-stream'), chat: document.getElementById('chat-sidebar') };
 const BUBBLE = 60;
 let floatState = {};
 try { floatState = JSON.parse(localStorage.getItem('wp_float') || '{}') || {}; } catch(e) { floatState = {}; }
@@ -398,7 +408,8 @@ function applyFloat(name){
   } else {
     ['left','top','width','height','zIndex'].forEach(k => { t.style[k] = ''; });
   }
-  stage.classList.toggle('has-float', !isSmallScreen() && Object.values(floatState).some(v => v && v.on));
+  if(name === 'chat') app.classList.toggle('chat-floating', on);
+  stage.classList.toggle('has-float', !isSmallScreen() && ['screen','stream'].some(n => floatState[n] && floatState[n].on));
 }
 function applyAllFloat(){ Object.keys(tileEls).forEach(applyFloat); }
 function bringFloatToFront(name){ floatZ += 1; tileEls[name].style.zIndex = floatZ; }
@@ -408,11 +419,15 @@ function toggleFloat(name){
   if(s.on){ s.on = false; }
   else {
     const r = tileEls[name].getBoundingClientRect();
-    const w = Math.round(Math.min(560, Math.max(320, r.width * 0.6)));
-    const h = Math.round(w * 9 / 16);
+    let w, h;
+    if(name === 'chat'){
+      w = Math.round(Math.min(420, Math.max(300, r.width))); h = Math.round(Math.min(620, window.innerHeight - 140));
+      s.x = Math.max(8, Math.round(r.left)); s.y = Math.max(70, Math.round(r.top));
+    } else {
+      w = Math.round(Math.min(560, Math.max(320, r.width * 0.6))); h = Math.round(w * 9 / 16);
+      s.x = Math.max(8, Math.round(r.right - w - 24)); s.y = Math.max(8, Math.round(r.bottom - h - 24));
+    }
     s.w = w; s.h = h;
-    s.x = Math.max(8, Math.round(r.right - w - 24));
-    s.y = Math.max(8, Math.round(r.bottom - h - 24));
     s.on = true; s.min = false;
   }
   saveFloat(); applyAllFloat();
@@ -436,6 +451,7 @@ function attachMove(handle, name, bubbleMode){
     const s = floatState[name];
     if(!s || !s.on || isSmallScreen()) return;
     if(bubbleMode !== !!s.min) return;
+    if(!bubbleMode && !document.body.classList.contains('editing')) return;
     if(e.target.closest('.tile-tools')) return;
     handle.setPointerCapture(e.pointerId);
     drag = { px: e.clientX, py: e.clientY, x: floatRect(s).x, y: floatRect(s).y, moved: false };
@@ -477,7 +493,7 @@ Object.keys(tileEls).forEach(name => {
   let rs = null;
   grip.addEventListener('pointerdown', e => {
     const s = floatState[name];
-    if(!s || !s.on) return;
+    if(!s || !s.on || !document.body.classList.contains('editing')) return;
     grip.setPointerCapture(e.pointerId);
     const r = floatRect(s);
     rs = { px: e.clientX, py: e.clientY, w: r.w, h: r.h, x: r.x, y: r.y };
@@ -499,3 +515,25 @@ Object.keys(tileEls).forEach(name => {
 
 window.addEventListener('resize', applyAllFloat);
 applyAllFloat();
+
+
+/* ============================================================
+   EDIT-LAYOUT BUTTON
+   ============================================================ */
+const editBtn = document.getElementById('edit-layout');
+const resetBtn = document.getElementById('reset-layout');
+function setEditing(on){
+  document.body.classList.toggle('editing', on);
+  editBtn.classList.toggle('active', on);
+  editBtn.textContent = on ? 'Hotovo' : 'Upravit rozložení';
+  resetBtn.hidden = !on;
+  if(!on) endDragClasses();
+}
+editBtn.addEventListener('click', () => setEditing(!document.body.classList.contains('editing')));
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.body.classList.contains('editing')) setEditing(false); });
+resetBtn.addEventListener('click', () => {
+  floatState = {}; saveFloat();
+  tileRatio = 0.5; applyRatio(); try { localStorage.setItem('wp_ratio', '0.5'); } catch(e) {}
+  chatWidth = 380; applyChatWidth(); try { localStorage.setItem('wp_chatW', '380'); } catch(e) {}
+  applyAllFloat();
+});

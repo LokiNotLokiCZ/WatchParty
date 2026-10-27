@@ -190,7 +190,7 @@ body{
   display:flex; gap:6px;
   opacity:0; transition:opacity .15s;
 }
-.tile:hover .tile-tools, .tile-tools:focus-within, .tile.floating .tile-tools{ opacity:1; }
+.tile:hover .tile-tools, .tile-tools:focus-within, .floating .tile-tools{ opacity:1; }
 @media (hover:none){ .tile-tools{ opacity:1; } }
 .tile-btn{
   width:36px; height:36px; border-radius:12px; cursor:pointer;
@@ -201,44 +201,44 @@ body{
 }
 .tile-btn:hover{ background:rgba(40,42,56,0.9); border-color:var(--line-strong); }
 .tile-btn .ic-dock{ display:none; }
-.tile.floating .tile-btn .ic-pop{ display:none; }
-.tile.floating .tile-btn .ic-dock{ display:block; }
+.floating .tile-btn .ic-pop{ display:none; }
+.floating .tile-btn .ic-dock{ display:block; }
 .only-floating{ display:none; }
-.tile.floating .only-floating{ display:flex; }
+.floating .only-floating{ display:flex; }
 
 /* drag strip + resize grip (floating windows only) */
 .tile-drag{ display:none; position:absolute; left:0; top:0; right:140px; height:56px; z-index:4; cursor:grab; touch-action:none; }
-.tile.floating .tile-drag{ display:block; }
+.floating .tile-drag{ display:block; }
 .tile-resize{
   display:none; position:absolute; right:0; bottom:0; width:26px; height:26px; z-index:7; cursor:nwse-resize; touch-action:none;
   background:linear-gradient(135deg, transparent 0 52%, rgba(255,255,255,0.45) 52% 60%, transparent 60% 72%, rgba(255,255,255,0.45) 72% 80%, transparent 80%);
 }
-.tile.floating:not(.minimized) .tile-resize{ display:block; }
+.floating:not(.minimized) .tile-resize{ display:block; }
 
 /* ---- floating window ---- */
-.tile.floating{
+.floating{
   position:fixed; z-index:60;
   border-radius:20px;
   border:1px solid var(--line-strong);
   box-shadow:0 30px 90px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
 }
-.tile.floating:fullscreen{ left:0 !important; top:0 !important; width:100% !important; height:100% !important; border-radius:0; }
-.tile.floating.dragging{ box-shadow:0 40px 110px rgba(0,0,0,0.8), 0 0 0 2px rgba(255,122,61,0.55); }
+.floating:fullscreen{ left:0 !important; top:0 !important; width:100% !important; height:100% !important; border-radius:0; }
+.floating.dragging{ box-shadow:0 40px 110px rgba(0,0,0,0.8), 0 0 0 2px rgba(255,122,61,0.55); }
 
 /* ---- minimized floating icon (bubble) ---- */
 .bubble{ display:none; position:absolute; inset:0; align-items:center; justify-content:center; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)); z-index:9; cursor:grab; }
 .bubble-dot{ position:absolute; top:9px; right:9px; width:11px; height:11px; border-radius:50%; background:transparent; border:2px solid transparent; }
 .bubble-dot.live{ background:var(--red); border-color:#fff; animation:pulse 1.8s ease-out infinite; }
-.tile.floating.minimized{ border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,0.25); box-shadow:0 14px 40px rgba(255,122,61,0.5); }
-.tile.floating.minimized .bubble{ display:flex; }
-.tile.floating.minimized .tile-media{ visibility:hidden; }
-.tile.floating.minimized .tile-label,
-.tile.floating.minimized .tile-tools,
-.tile.floating.minimized .tile-drag,
-.tile.floating.minimized .dock,
-.tile.floating.minimized .toast,
-.tile.floating.minimized .toast-btn,
-.tile.floating.minimized .play-overlay{ display:none !important; }
+.floating.minimized{ border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,0.25); box-shadow:0 14px 40px rgba(255,122,61,0.5); }
+.floating.minimized .bubble{ display:flex; }
+.floating.minimized .tile-media{ visibility:hidden; }
+.floating.minimized .tile-label,
+.floating.minimized .tile-tools,
+.floating.minimized .tile-drag,
+.floating.minimized .dock,
+.floating.minimized .toast,
+.floating.minimized .toast-btn,
+.floating.minimized .play-overlay{ display:none !important; }
 
 /* stage layout while a tile is floating: the remaining tile takes the whole area */
 .stage.has-float{ grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); }
@@ -403,6 +403,45 @@ body.resizing .app{ transition:none; }
   }
 }
 
+
+/* ============================================================
+   EDIT-LAYOUT MODE  (handles & window tools are hidden until you press "Upravit rozložení")
+   ============================================================ */
+.split, .split-chat{ opacity:0; pointer-events:none; transition:opacity .2s; }
+.editing .split, .editing .split-chat{ opacity:1; pointer-events:auto; }
+.editing .split span, .editing .split-chat span{ background:rgba(255,122,61,0.55); }
+.tile-tools [data-float], .tile-tools [data-min]{ display:none !important; }
+.editing .tile-tools [data-float]{ display:flex !important; }
+.editing .floating .tile-tools [data-min]{ display:flex !important; }
+.floating .tile-drag, .floating .tile-resize{ display:none !important; }
+.editing .floating .tile-drag{ display:block !important; }
+.editing .floating:not(.minimized) .tile-resize{ display:block !important; }
+.editing .tile, .editing .chat{ border-color:rgba(255,122,61,0.5); }
+.editing .floating .tile-tools, .editing .tile-tools{ opacity:1; }
+#edit-layout.active{ color:#fff; border-color:transparent; background:linear-gradient(135deg,var(--accent),var(--accent-2)); }
+
+/* chat as a floating window */
+.chat .tile-tools.chat-tools{ position:static; opacity:1; margin-left:auto; margin-right:8px; }
+.chat .tile-btn{ width:32px; height:32px; border-radius:10px; }
+.chat .tile-drag{ right:150px; height:58px; }
+.chat.floating{
+  position:fixed; z-index:60; margin:0; display:flex; border-radius:20px;
+  border:1px solid var(--line-strong);
+  box-shadow:0 30px 90px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+}
+.app.chat-closed .chat.floating{ border:1px solid var(--line-strong); }
+.chat.floating.minimized{ border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,0.25); box-shadow:0 14px 40px rgba(255,122,61,0.5); }
+.chat.floating.dragging{ box-shadow:0 40px 110px rgba(0,0,0,0.8), 0 0 0 2px rgba(255,122,61,0.55); }
+.chat.floating.closed{ display:none; }
+.chat.floating .split-chat{ display:none; }
+.app.chat-floating{ grid-template-columns:minmax(0,1fr) 0; }
+.chat.floating.minimized .chat-head, .chat.floating.minimized .chat-body{ visibility:hidden; }
+.chat.floating.minimized .tile-drag{ display:none !important; }
+
+.app-toast{ display:flex; align-items:center; gap:14px; }
+.app-toast[hidden]{ display:none; }
+.app-toast .btn{ padding:8px 14px; font-size:12px; flex-shrink:0; }
+.app-toast .btn[hidden]{ display:none; }
 /* ============================================================
    PHONE / TABLET  (< 900px)
    Page scrolls, tiles stack at 16:9 with their controls below
@@ -424,7 +463,7 @@ body.resizing .app{ transition:none; }
   .bar-right{ grid-area:right; }
   .views{ grid-area:views; width:100%; }
   .view-btn{ flex:1; justify-content:center; padding:10px 8px; }
-  #chat-toggle{ display:none; }
+  #chat-toggle, #edit-layout, #reset-layout{ display:none !important; }
   .chip-btn{ height:40px; }
 
   .stage{
