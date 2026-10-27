@@ -411,7 +411,9 @@ body.resizing .app{ transition:none; }
 .editing .split, .editing .split-chat{ opacity:1; pointer-events:auto; }
 .editing .split span, .editing .split-chat span{ background:rgba(255,122,61,0.55); }
 .tile-tools [data-float], .tile-tools [data-min]{ display:none !important; }
-.editing .tile-tools [data-float]{ display:flex !important; }
+.editing .tile-drag{ display:block; }
+.editing .floating.minimized .tile-drag{ display:none !important; }
+.tile-tools [data-float]{ display:none !important; }
 .editing .floating .tile-tools [data-min]{ display:flex !important; }
 .floating .tile-drag, .floating .tile-resize{ display:none !important; }
 .editing .floating .tile-drag{ display:block !important; }

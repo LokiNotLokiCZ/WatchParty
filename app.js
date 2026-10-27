@@ -420,7 +420,12 @@ function bringFloatToFront(name){ floatZ += 1; tileEls[name].style.zIndex = floa
 function toggleFloat(name){
   const s = floatState[name] || (floatState[name] = {});
   if(s.on){ s.on = false; }
-  else {
+  else { floatOut(name); return; }
+  saveFloat(); applyAllFloat();
+}
+function floatOut(name){
+  const s = floatState[name] || (floatState[name] = {});
+  {
     const r = tileEls[name].getBoundingClientRect();
     let w, h;
     if(name === 'chat'){
@@ -434,7 +439,7 @@ function toggleFloat(name){
     s.on = true; s.min = false;
   }
   saveFloat(); applyAllFloat();
-  if(s.on) bringFloatToFront(name);
+  bringFloatToFront(name);
 }
 
 document.querySelectorAll('[data-float]').forEach(b => b.addEventListener('click', () => toggleFloat(b.dataset.float)));
@@ -451,11 +456,13 @@ function attachMove(handle, name, bubbleMode){
   const tile = tileEls[name];
   let drag = null;
   handle.addEventListener('pointerdown', e => {
+    if(isSmallScreen()) return;
+    if(e.target.closest('.tile-tools')) return;
+    if(!bubbleMode && document.body.classList.contains('editing') && !(floatState[name] && floatState[name].on)) floatOut(name);
     const s = floatState[name];
-    if(!s || !s.on || isSmallScreen()) return;
+    if(!s || !s.on) return;
     if(bubbleMode !== !!s.min) return;
     if(!bubbleMode && !document.body.classList.contains('editing')) return;
-    if(e.target.closest('.tile-tools')) return;
     handle.setPointerCapture(e.pointerId);
     drag = { px: e.clientX, py: e.clientY, x: floatRect(s).x, y: floatRect(s).y, moved: false };
     bringFloatToFront(name);
@@ -487,6 +494,9 @@ function attachMove(handle, name, bubbleMode){
 Object.keys(tileEls).forEach(name => {
   attachMove(tileEls[name].querySelector('.tile-drag'), name, false);
   attachMove(tileEls[name], name, true);
+  tileEls[name].querySelector('.tile-drag').addEventListener('dblclick', () => {
+    if(document.body.classList.contains('editing') && floatState[name] && floatState[name].on){ floatState[name].on = false; saveFloat(); applyAllFloat(); }
+  });
   tileEls[name].addEventListener('pointerdown', () => { if(floatState[name] && floatState[name].on) bringFloatToFront(name); });
 });
 
