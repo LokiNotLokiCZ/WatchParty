@@ -115,7 +115,7 @@
   </div>
 
   <!-- SCREEN SHARE PANEL -->
-  <div class="panel" id="panel-screen" data-panel="screen" style="height:560px;">
+  <div class="panel" id="panel-screen" data-panel="screen">
     <div class="panel-header" data-drag-handle>
       <span class="panel-drag-dots" aria-hidden="true">⠿</span>
       <span class="bay-label teal">Screen</span>
@@ -150,6 +150,20 @@
     <div class="resize-handle rh-se" data-resize-handle="se" title="Resize"></div>
   </div>
 
+</div>
+
+<!-- HOST LOGIN (in-page, replaces the browser prompt) -->
+<div id="host-modal" class="modal" hidden>
+  <form class="modal-card" id="host-form" autocomplete="off">
+    <div class="modal-title">Host login</div>
+    <div class="modal-sub">Zadej heslo hosta pro ovládání filmu a sdílení obrazovky.</div>
+    <input type="password" id="host-pass" class="film-url-input" placeholder="Heslo" autocomplete="current-password">
+    <div class="modal-error" id="host-error" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="host-cancel">Zrušit</button>
+      <button type="submit" class="btn" id="host-submit">Přihlásit</button>
+    </div>
+  </form>
 </div>
 
 <div id="panel-tray"></div>

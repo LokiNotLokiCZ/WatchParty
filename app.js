@@ -116,6 +116,20 @@ if(firebaseReady){
   authResolve();
 }
 
+const hostModal = document.getElementById('host-modal');
+const hostForm = document.getElementById('host-form');
+const hostPass = document.getElementById('host-pass');
+const hostError = document.getElementById('host-error');
+const hostSubmit = document.getElementById('host-submit');
+
+function openHostModal(){
+  hostError.textContent = '';
+  hostPass.value = '';
+  hostModal.hidden = false;
+  setTimeout(() => hostPass.focus(), 30);
+}
+function closeHostModal(){ hostModal.hidden = true; hostPass.value = ''; }
+
 document.getElementById('host-btn').addEventListener('click', async function(){
   if(!firebaseReady) return;
   if(isHost){
@@ -123,21 +137,37 @@ document.getElementById('host-btn').addEventListener('click', async function(){
     try { await auth.signInAnonymously(); } catch(e) { console.error(e); }
     return;
   }
-  const entered = prompt('Host passcode:');
-  if(entered === null) return;
+  openHostModal();
+});
+document.getElementById('host-cancel').addEventListener('click', closeHostModal);
+hostModal.addEventListener('click', e => { if(e.target === hostModal) closeHostModal(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !hostModal.hidden) closeHostModal(); });
+
+hostForm.addEventListener('submit', async function(e){
+  e.preventDefault();
+  const entered = hostPass.value;
+  if(!entered) return;
+  hostSubmit.disabled = true;
+  hostError.textContent = '';
   try {
     const res = await fetch('/api/host-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ passcode: entered })
     });
-    if(res.status === 429){ alert('Too many attempts. Try again in a few minutes.'); return; }
-    if(!res.ok){ alert('Wrong passcode.'); return; }
-    const data = await res.json();
-    await auth.signInWithCustomToken(data.token);
-  } catch(e) {
-    console.error(e);
-    alert('Host login failed. Check your connection and try again.');
+    if(res.status === 429){ hostError.textContent = 'Příliš mnoho pokusů. Zkus to za pár minut.'; }
+    else if(res.status === 501){ hostError.textContent = 'Server ještě není nastavený (chybí proměnné ve Vercelu).'; }
+    else if(!res.ok){ hostError.textContent = 'Špatné heslo.'; }
+    else {
+      const data = await res.json();
+      await auth.signInWithCustomToken(data.token);
+      closeHostModal();
+    }
+  } catch(err) {
+    console.error(err);
+    hostError.textContent = 'Přihlášení se nepovedlo. Zkontroluj připojení.';
+  } finally {
+    hostSubmit.disabled = false;
   }
 });
 applyHostUI();
@@ -413,11 +443,11 @@ const panels = Array.from(document.querySelectorAll('.panel'));
 const isSmallScreen = () => window.innerWidth < 900;
 
 function loadPanelLayout(){
-  try { return JSON.parse(localStorage.getItem('wp_panelLayout') || '{}'); }
+  try { return JSON.parse(localStorage.getItem('wp_panelLayout_v2') || '{}'); }
   catch(e){ return {}; }
 }
 function savePanelLayout(layout){
-  localStorage.setItem('wp_panelLayout', JSON.stringify(layout));
+  localStorage.setItem('wp_panelLayout_v2', JSON.stringify(layout));
 }
 
 function initPanelPosition(panel, defaultX, defaultY){
@@ -432,8 +462,8 @@ function initPanelPosition(panel, defaultX, defaultY){
 }
 
 initPanelPosition(document.getElementById('panel-twitch'), 20, 20);
-initPanelPosition(document.getElementById('panel-film'), 600, 20);
-initPanelPosition(document.getElementById('panel-screen'), 20, 500);
+initPanelPosition(document.getElementById('panel-film'), 860, 20);
+initPanelPosition(document.getElementById('panel-screen'), 20, 560);
 
 function makeDraggable(panel){
   const handle = panel.querySelector('[data-drag-handle]');
@@ -480,19 +510,16 @@ panels.forEach(panel => {
 });
 
 document.getElementById('reset-layout-btn').addEventListener('click', function(){
-  localStorage.removeItem('wp_panelLayout');
+  localStorage.removeItem('wp_panelLayout_v2');
   const twitch = document.getElementById('panel-twitch');
   const film = document.getElementById('panel-film');
-  twitch.style.width = '560px';
-  twitch.style.height = '460px';
+  twitch.style.width = ''; twitch.style.height = '';
   const screen = document.getElementById('panel-screen');
-  film.style.width = '560px';
-  film.style.height = '560px';
-  screen.style.width = '560px';
-  screen.style.height = '560px';
+  film.style.width = ''; film.style.height = '';
+  screen.style.width = ''; screen.style.height = '';
   initPanelPosition(twitch, 20, 20);
-  initPanelPosition(film, 600, 20);
-  initPanelPosition(screen, 20, 500);
+  initPanelPosition(film, 860, 20);
+  initPanelPosition(screen, 20, 560);
   bringToFront(twitch);
   bringToFront(film);
   bringToFront(screen);

@@ -131,6 +131,9 @@ body{
   box-shadow:var(--shadow);
   overflow:visible;
 }
+#panel-twitch{ width:820px; height:520px; }
+#panel-film{ width:600px; height:560px; }
+#panel-screen{ width:820px; height:520px; }
 .panel.dragging, .panel.resizing{ z-index:60; box-shadow:0 20px 60px rgba(0,0,0,0.6); border-color:var(--line-strong); }
 
 .resize-handle{
@@ -175,7 +178,7 @@ body{
 }
 .bay-label.accent, .bay-label.orange{color:#FF9A66;}
 .bay-label.teal{color:var(--teal);}
-.bay-tag{font-size:10.5px; font-weight:600; color:var(--text-faint); letter-spacing:0.08em; text-transform:uppercase;}
+.bay-tag{display:none; font-size:10.5px; font-weight:600; color:var(--text-faint); letter-spacing:0.08em; text-transform:uppercase;}
 .sync-pill{
   font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
   padding:3px 9px; border-radius:999px; color:var(--text-faint); border:1px solid var(--line);
@@ -206,6 +209,7 @@ body{
 .frame.on-air{ box-shadow:0 0 0 1px rgba(255,122,61,0.55), 0 0 28px rgba(255,122,61,0.18); }
 
 .corner-tag{
+  display:none;
   position:absolute; top:10px; left:10px; z-index:5;
   font-size:10px; font-weight:700; letter-spacing:0.08em;
   padding:4px 9px; border-radius:999px; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px);
@@ -218,6 +222,12 @@ body{
 
 .chat-wrap{ background:var(--panel); overflow:hidden; flex:1; min-height:0; }
 #twitch-chat{ width:100%; height:100%; border:0; display:block; }
+
+/* On desktop the open chat takes its own column, so it never covers the panels */
+@media (min-width: 900px){
+  #workspace{ transition:margin-right .25s cubic-bezier(.2,.8,.2,1); }
+  body:has(#chat-sidebar:not(.closed)) #workspace{ margin-right:380px; }
+}
 
 /* ---------- chat sidebar (fixed dock) ---------- */
 #chat-sidebar{
@@ -462,3 +472,22 @@ footer{
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }
 }
+
+/* ---------- host login modal ---------- */
+.modal{
+  position:fixed; inset:0; z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  background:rgba(4,5,9,0.65); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
+.modal[hidden]{ display:none; }
+.modal-card{
+  width:100%; max-width:380px;
+  display:flex; flex-direction:column; gap:12px;
+  padding:22px; border-radius:var(--radius);
+  background:var(--panel); border:1px solid var(--line-strong); box-shadow:var(--shadow);
+}
+.modal-title{ font-size:18px; font-weight:800; letter-spacing:-0.01em; }
+.modal-sub{ font-size:13px; color:var(--text-dim); line-height:1.5; }
+.modal-error{ min-height:18px; font-size:12.5px; font-weight:600; color:#FF9AA5; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
+.modal .film-url-input{ font-size:16px; }
