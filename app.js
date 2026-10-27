@@ -190,7 +190,10 @@ setView(savedView);
 const screenPill = document.getElementById('screen-pill');
 const screenDot = document.getElementById('screen-dot');
 function syncScreenDot(){
-  screenDot.classList.toggle('live', screenPill.classList.contains('is-live') || screenPill.classList.contains('is-watching'));
+  const live = screenPill.classList.contains('is-live') || screenPill.classList.contains('is-watching');
+  screenDot.classList.toggle('live', live);
+  const bd = document.getElementById('bubble-screen-dot');
+  if(bd) bd.classList.toggle('live', live);
 }
 new MutationObserver(syncScreenDot).observe(screenPill, { attributes: true, attributeFilter: ['class'] });
 syncScreenDot();
@@ -361,3 +364,138 @@ document.getElementById('twitch-login').addEventListener('click', () =>
 document.getElementById('twitch-logout').addEventListener('click', () =>
   openTwitchWindow('https://www.twitch.tv/', 'V okně klikni vpravo nahoře na svůj profil → Odhlásit se, pak okno zavři.'));
 document.getElementById('twitch-reload').addEventListener('click', () => { setMenu(false); reloadTwitch(); });
+
+
+/* ============================================================
+   FLOATING WINDOWS  (pop a tile out, drag it anywhere, resize it,
+   shrink it to a small floating icon, or dock it back)
+   ============================================================ */
+const tileEls = { screen: document.getElementById('tile-screen'), stream: document.getElementById('tile-stream') };
+const BUBBLE = 60;
+let floatState = {};
+try { floatState = JSON.parse(localStorage.getItem('wp_float') || '{}') || {}; } catch(e) { floatState = {}; }
+const saveFloat = () => { try { localStorage.setItem('wp_float', JSON.stringify(floatState)); } catch(e) {} };
+let floatZ = 60;
+
+function floatRect(s){
+  const min = !!s.min;
+  const w = min ? BUBBLE : clamp(s.w || 480, 260, window.innerWidth - 16);
+  const h = min ? BUBBLE : clamp(s.h || 300, 170, window.innerHeight - 16);
+  const x = clamp(s.x || 40, 0, Math.max(0, window.innerWidth - w));
+  const y = clamp(s.y || 90, 0, Math.max(0, window.innerHeight - h));
+  return { x, y, w, h };
+}
+
+function applyFloat(name){
+  const t = tileEls[name], s = floatState[name];
+  const on = !!(s && s.on) && !isSmallScreen();
+  t.classList.toggle('floating', on);
+  t.classList.toggle('minimized', on && !!s.min);
+  if(on){
+    const r = floatRect(s);
+    t.style.left = r.x + 'px'; t.style.top = r.y + 'px';
+    t.style.width = r.w + 'px'; t.style.height = r.h + 'px';
+  } else {
+    ['left','top','width','height','zIndex'].forEach(k => { t.style[k] = ''; });
+  }
+  stage.classList.toggle('has-float', !isSmallScreen() && Object.values(floatState).some(v => v && v.on));
+}
+function applyAllFloat(){ Object.keys(tileEls).forEach(applyFloat); }
+function bringFloatToFront(name){ floatZ += 1; tileEls[name].style.zIndex = floatZ; }
+
+function toggleFloat(name){
+  const s = floatState[name] || (floatState[name] = {});
+  if(s.on){ s.on = false; }
+  else {
+    const r = tileEls[name].getBoundingClientRect();
+    const w = Math.round(Math.min(560, Math.max(320, r.width * 0.6)));
+    const h = Math.round(w * 9 / 16);
+    s.w = w; s.h = h;
+    s.x = Math.max(8, Math.round(r.right - w - 24));
+    s.y = Math.max(8, Math.round(r.bottom - h - 24));
+    s.on = true; s.min = false;
+  }
+  saveFloat(); applyAllFloat();
+  if(s.on) bringFloatToFront(name);
+}
+
+document.querySelectorAll('[data-float]').forEach(b => b.addEventListener('click', () => toggleFloat(b.dataset.float)));
+document.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => {
+  const name = b.dataset.min, s = floatState[name];
+  if(!s) return;
+  s.min = true; saveFloat(); applyFloat(name);
+}));
+
+function endDragClasses(){ document.body.classList.remove('resizing', 'moving'); }
+
+/* drag: by the top strip of the window, or by the whole icon when minimized */
+function attachMove(handle, name, bubbleMode){
+  const tile = tileEls[name];
+  let drag = null;
+  handle.addEventListener('pointerdown', e => {
+    const s = floatState[name];
+    if(!s || !s.on || isSmallScreen()) return;
+    if(bubbleMode !== !!s.min) return;
+    if(e.target.closest('.tile-tools')) return;
+    handle.setPointerCapture(e.pointerId);
+    drag = { px: e.clientX, py: e.clientY, x: floatRect(s).x, y: floatRect(s).y, moved: false };
+    bringFloatToFront(name);
+    tile.classList.add('dragging');
+    document.body.classList.add('resizing', 'moving');
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', e => {
+    if(!drag) return;
+    const s = floatState[name];
+    const dx = e.clientX - drag.px, dy = e.clientY - drag.py;
+    if(Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    s.x = drag.x + dx; s.y = drag.y + dy;
+    applyFloat(name);
+  });
+  const end = () => {
+    if(!drag) return;
+    const s = floatState[name];
+    if(s.min && !drag.moved){ s.min = false; }   // a tap on the icon opens the window again
+    drag = null;
+    tile.classList.remove('dragging');
+    endDragClasses();
+    const r = floatRect(s); s.x = r.x; s.y = r.y;
+    saveFloat(); applyFloat(name);
+  };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+Object.keys(tileEls).forEach(name => {
+  attachMove(tileEls[name].querySelector('.tile-drag'), name, false);
+  attachMove(tileEls[name], name, true);
+  tileEls[name].addEventListener('pointerdown', () => { if(floatState[name] && floatState[name].on) bringFloatToFront(name); });
+});
+
+/* resize: corner grip of a floating window */
+Object.keys(tileEls).forEach(name => {
+  const grip = tileEls[name].querySelector('.tile-resize');
+  let rs = null;
+  grip.addEventListener('pointerdown', e => {
+    const s = floatState[name];
+    if(!s || !s.on) return;
+    grip.setPointerCapture(e.pointerId);
+    const r = floatRect(s);
+    rs = { px: e.clientX, py: e.clientY, w: r.w, h: r.h, x: r.x, y: r.y };
+    bringFloatToFront(name);
+    document.body.classList.add('resizing');
+    e.preventDefault(); e.stopPropagation();
+  });
+  grip.addEventListener('pointermove', e => {
+    if(!rs) return;
+    const s = floatState[name];
+    s.w = clamp(rs.w + e.clientX - rs.px, 260, window.innerWidth - rs.x);
+    s.h = clamp(rs.h + e.clientY - rs.py, 170, window.innerHeight - rs.y);
+    applyFloat(name);
+  });
+  const end = () => { if(!rs) return; rs = null; endDragClasses(); saveFloat(); };
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
+});
+
+window.addEventListener('resize', applyAllFloat);
+applyAllFloat();

@@ -137,7 +137,7 @@ body{
   padding:0 16px 16px 18px;
 }
 .stage[data-view="screen"]{ grid-template-columns:minmax(0,1fr); }
-.stage[data-view="screen"] #tile-stream,
+.stage[data-view="screen"] #tile-stream:not(.floating),
 .stage[data-view="screen"] .split{ display:none; }
 
 .tile{
@@ -185,17 +185,66 @@ body{
 .sync-pill.is-watching{ color:var(--teal); border-color:rgba(45,212,191,0.5); background:rgba(45,212,191,0.1); }
 .sync-pill.is-twitch{ color:#C7A8FF; border-color:rgba(167,125,255,0.45); background:rgba(167,125,255,0.1); }
 
-.tile-fs{
-  position:absolute; top:14px; right:14px; z-index:5;
+.tile-tools{
+  position:absolute; top:14px; right:14px; z-index:6;
+  display:flex; gap:6px;
+  opacity:0; transition:opacity .15s;
+}
+.tile:hover .tile-tools, .tile-tools:focus-within, .tile.floating .tile-tools{ opacity:1; }
+@media (hover:none){ .tile-tools{ opacity:1; } }
+.tile-btn{
   width:36px; height:36px; border-radius:12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   color:var(--text); background:var(--glass); border:1px solid var(--line);
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  opacity:0; transition:opacity .15s, background .15s;
+  transition:background .15s, border-color .15s;
 }
-.tile:hover .tile-fs, .tile-fs:focus-visible{ opacity:1; }
-.tile-fs:hover{ background:rgba(40,42,56,0.85); }
-@media (hover:none){ .tile-fs{ opacity:1; } }
+.tile-btn:hover{ background:rgba(40,42,56,0.9); border-color:var(--line-strong); }
+.tile-btn .ic-dock{ display:none; }
+.tile.floating .tile-btn .ic-pop{ display:none; }
+.tile.floating .tile-btn .ic-dock{ display:block; }
+.only-floating{ display:none; }
+.tile.floating .only-floating{ display:flex; }
+
+/* drag strip + resize grip (floating windows only) */
+.tile-drag{ display:none; position:absolute; left:0; top:0; right:140px; height:56px; z-index:4; cursor:grab; touch-action:none; }
+.tile.floating .tile-drag{ display:block; }
+.tile-resize{
+  display:none; position:absolute; right:0; bottom:0; width:26px; height:26px; z-index:7; cursor:nwse-resize; touch-action:none;
+  background:linear-gradient(135deg, transparent 0 52%, rgba(255,255,255,0.45) 52% 60%, transparent 60% 72%, rgba(255,255,255,0.45) 72% 80%, transparent 80%);
+}
+.tile.floating:not(.minimized) .tile-resize{ display:block; }
+
+/* ---- floating window ---- */
+.tile.floating{
+  position:fixed; z-index:60;
+  border-radius:20px;
+  border:1px solid var(--line-strong);
+  box-shadow:0 30px 90px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+}
+.tile.floating:fullscreen{ left:0 !important; top:0 !important; width:100% !important; height:100% !important; border-radius:0; }
+.tile.floating.dragging{ box-shadow:0 40px 110px rgba(0,0,0,0.8), 0 0 0 2px rgba(255,122,61,0.55); }
+
+/* ---- minimized floating icon (bubble) ---- */
+.bubble{ display:none; position:absolute; inset:0; align-items:center; justify-content:center; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)); z-index:9; cursor:grab; }
+.bubble-dot{ position:absolute; top:9px; right:9px; width:11px; height:11px; border-radius:50%; background:transparent; border:2px solid transparent; }
+.bubble-dot.live{ background:var(--red); border-color:#fff; animation:pulse 1.8s ease-out infinite; }
+.tile.floating.minimized{ border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,0.25); box-shadow:0 14px 40px rgba(255,122,61,0.5); }
+.tile.floating.minimized .bubble{ display:flex; }
+.tile.floating.minimized .tile-media{ visibility:hidden; }
+.tile.floating.minimized .tile-label,
+.tile.floating.minimized .tile-tools,
+.tile.floating.minimized .tile-drag,
+.tile.floating.minimized .dock,
+.tile.floating.minimized .toast,
+.tile.floating.minimized .toast-btn,
+.tile.floating.minimized .play-overlay{ display:none !important; }
+
+/* stage layout while a tile is floating: the remaining tile takes the whole area */
+.stage.has-float{ grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); }
+.stage.has-float .split{ display:none; }
+.stage[data-view="screen"] #tile-stream.floating{ display:block; }
+body.moving{ cursor:grabbing; }
 
 /* host controls (floating dock) */
 .dock{
@@ -386,6 +435,12 @@ body.resizing .app{ transition:none; }
   }
   .stage[data-view="both"]{ display:flex; }
   .split, .split-chat{ display:none; }
+  .tile.floating{ position:relative !important; left:auto !important; top:auto !important; width:auto !important; height:auto !important; border-radius:var(--r-lg); z-index:auto; }
+  .tile.floating.minimized{ border-radius:var(--r-lg); border:1px solid var(--line); box-shadow:none; overflow:visible; }
+  .tile.floating.minimized .bubble{ display:none; }
+  .tile.floating.minimized .tile-media{ visibility:visible; }
+  .tile.floating.minimized .tile-label, .tile.floating.minimized .tile-tools{ display:flex !important; }
+  .stage.has-float{ display:flex; }
   .menu{ right:-4px; }
 
   .tile{ display:flex; flex-direction:column; background:var(--surface); }
@@ -394,7 +449,8 @@ body.resizing .app{ transition:none; }
   .empty::before{ width:48px; height:48px; margin-bottom:8px; background-size:26px, auto; }
 
   .tile-label{ top:10px; left:10px; }
-  .tile-fs{ top:10px; right:10px; }
+  .tile-tools{ top:10px; right:10px; }
+  [data-float], [data-min], .tile-drag, .tile-resize{ display:none !important; }
 
   .dock, .toast{ position:static; max-width:none; margin:12px; backdrop-filter:none; -webkit-backdrop-filter:none; }
   .toast-btn{ position:static; margin:0 12px 12px; align-self:flex-start; }
